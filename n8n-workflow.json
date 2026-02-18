@@ -1,0 +1,436 @@
+{
+  "name": "BelegBot - Telegram zu Supabase",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": {}
+      },
+      "id": "telegram-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 300],
+      "webhookId": "belegbot-webhook",
+      "credentials": {
+        "telegramApi": {
+          "id": "DEINE_TELEGRAM_CREDENTIAL_ID",
+          "name": "BelegBot Telegram"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ─── Token Parser ──────────────────────────────────────────\n// Liest Tokens aus dem Telegram-Nachrichtentext:\n//   g:ja / g:nein  → is_shared\n//   p:lena / p:moritz → paid_by\n// Rest → note\n\nconst message = $input.first().json;\nconst body = message.message || message.edited_message || {};\n\n// Nutzer-Mapping über Telegram user_id\n// WICHTIG: Ersetze diese IDs mit den echten Telegram-User-IDs von Lena und Moritz!\nconst USER_MAP = {\n  123456789: 'lena',    // ← Lenas Telegram-User-ID\n  987654321: 'moritz',  // ← Moritz' Telegram-User-ID\n};\n\nconst userId = body.from?.id;\nconst owner = USER_MAP[userId] || null;\n\nif (!owner) {\n  return [{ json: { error: 'Unbekannter Nutzer', userId, skip: true } }];\n}\n\n// Text parsen\nconst rawText = (body.caption || body.text || '').trim();\nconst tokens = rawText.split(/\\s+/);\n\nlet isShared = false;\nlet paidBy = owner;\nconst remarkParts = [];\n\nconst warnings = [];\n\nfor (const token of tokens) {\n  const lower = token.toLowerCase();\n  if (lower === 'g:ja') {\n    isShared = true;\n  } else if (lower === 'g:nein') {\n    isShared = false;\n  } else if (lower === 'p:lena') {\n    paidBy = 'lena';\n  } else if (lower === 'p:moritz') {\n    paidBy = 'moritz';\n  } else if (lower.startsWith('g:') || lower.startsWith('p:')) {\n    // Unbekannter Token\n    warnings.push(`Unbekanntes Token: ${token}`);\n    remarkParts.push(token);\n  } else {\n    remarkParts.push(token);\n  }\n}\n\nconst note = remarkParts.join(' ').trim() || null;\n\n// Datei-Infos\nconst photo = body.photo || null;\nconst document = body.document || null;\nconst hasFile = !!(photo || document);\n\nlet fileId = null;\nlet fileType = null;\n\nif (photo && photo.length > 0) {\n  // Größtes Foto nehmen\n  fileId = photo[photo.length - 1].file_id;\n  fileType = 'photo';\n} else if (document) {\n  fileId = document.file_id;\n  fileType = document.mime_type === 'application/pdf' ? 'pdf' : 'document';\n}\n\nreturn [{\n  json: {\n    owner,\n    isShared,\n    paidBy,\n    note,\n    fileId,\n    fileType,\n    hasFile,\n    warnings,\n    chatId: body.chat?.id,\n    messageId: body.message_id,\n    userId,\n    rawText,\n  }\n}];\n"
+      },
+      "id": "parse-tokens",
+      "name": "Tokens parsen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "skip-check",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-skip",
+      "name": "Unbekannter User?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "❌ Du bist nicht als Nutzer registriert. Bitte wende dich an den Administrator.",
+        "additionalFields": {}
+      },
+      "id": "send-unknown-user",
+      "name": "Unbekannter User Meldung",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [660, 160],
+      "credentials": {
+        "telegramApi": {
+          "id": "DEINE_TELEGRAM_CREDENTIAL_ID",
+          "name": "BelegBot Telegram"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "id": "file-check",
+              "leftValue": "={{ $json.hasFile }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-file",
+      "name": "Hat Dateianhang?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 380]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{ $credentials.telegramApi.accessToken }}/getFile?file_id={{ $('Tokens parsen').item.json.fileId }}",
+        "options": {}
+      },
+      "id": "get-file-path",
+      "name": "Datei-Pfad holen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 280]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/file/bot{{ $credentials.telegramApi.accessToken }}/{{ $json.result.file_path }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "download-file",
+      "name": "Datei herunterladen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 280]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Datei als Base64 kodieren für Claude API\nconst binaryData = $input.first().binary;\nconst parsed = $('Tokens parsen').first().json;\nconst fileInfo = $('Datei-Pfad holen').first().json;\n\nconst fileKey = Object.keys(binaryData)[0];\nconst file = binaryData[fileKey];\n\n// Base64 Daten\nconst base64Data = Buffer.from(await $helpers.getBinaryDataBuffer(binaryData, fileKey)).toString('base64');\n\n// Medientyp bestimmen\nlet mediaType = 'image/jpeg';\nif (parsed.fileType === 'pdf') {\n  mediaType = 'application/pdf';\n} else if (file.mimeType) {\n  mediaType = file.mimeType;\n}\n\n// Dateiname für Storage\nconst timestamp = new Date().toISOString().replace(/[:.]/g, '-');\nconst ext = parsed.fileType === 'pdf' ? 'pdf' : 'jpg';\nconst fileName = `${parsed.owner}/${timestamp}.${ext}`;\n\nreturn [{\n  json: {\n    ...parsed,\n    base64Data,\n    mediaType,\n    fileName,\n  }\n}];\n"
+      },
+      "id": "prepare-file",
+      "name": "Datei vorbereiten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 280]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Wenn kein Dateianhang: Minimal-Datensatz erstellen\nconst parsed = $input.first().json;\nreturn [{\n  json: {\n    ...parsed,\n    base64Data: null,\n    mediaType: null,\n    fileName: null,\n  }\n}];\n"
+      },
+      "id": "no-file-fallback",
+      "name": "Ohne Datei fortfahren",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 500]
+    },
+    {
+      "parameters": {
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.ANTHROPIC_API_KEY }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-opus-4-5\",\n  \"max_tokens\": 800,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": [\n        {{ $json.base64Data ? '{\n          \"type\": \"' + ($json.mediaType === 'application/pdf' ? 'document' : 'image') + '\",\n          \"source\": {\n            \"type\": \"base64\",\n            \"media_type\": \"' + $json.mediaType + '\",\n            \"data\": \"' + $json.base64Data + '\"\n          }\n        },' : '' }}\n        {\n          \"type\": \"text\",\n          \"text\": \"Analysiere diesen Kassenbon/Beleg und extrahiere die Informationen. Antworte NUR mit einem gültigen JSON-Objekt, kein Markdown, kein Text davor oder danach.\\n\\nGesuchte Felder:\\n- date: Kaufdatum (Format: YYYY-MM-DD, oder null)\\n- merchant: Name des Händlers/Restaurants/Shops (String oder null)\\n- total_amount: Gesamtbetrag in Euro als Zahl (ohne €-Zeichen, oder null)\\n- category: Passende Kategorie aus dieser Liste: Lebensmittel, Restaurant & Café, Haushalt & Wohnen, Gesundheit & Apotheke, Kleidung & Mode, Elektronik & Technik, Transport & Auto, Freizeit & Sport, Reisen & Urlaub, Bildung & Bücher, Beauty & Pflege, Versicherung & Finanzen, Sonstiges, Andere\\n- vat_7_amount: MwSt-Betrag 7% als Zahl (oder null)\\n- vat_7_base: Nettobetrag 7% als Zahl (oder null)\\n- vat_19_amount: MwSt-Betrag 19% als Zahl (oder null)\\n- vat_19_base: Nettobetrag 19% als Zahl (oder null)\\n- confidence: Qualität der Erkennung: high, medium, oder low\\n\\nBeispiel-Output:\\n{\\\"date\\\":\\\"2024-01-15\\\",\\\"merchant\\\":\\\"Rewe\\\",\\\"total_amount\\\":42.80,\\\"category\\\":\\\"Lebensmittel\\\",\\\"vat_7_amount\\\":1.23,\\\"vat_7_base\\\":17.57,\\\"vat_19_amount\\\":3.45,\\\"vat_19_base\\\":18.16,\\\"confidence\\\":\\\"high\\\"}\"\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "claude-extraction",
+      "name": "Claude KI-Extraktion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 380]
+    },
+    {
+      "parameters": {
+        "jsCode": "// KI-Antwort parsen und mit Telegram-Daten zusammenführen\nconst aiResponse = $input.first().json;\nconst tokenData = $('Tokens parsen').first().json;\n\nlet extracted = {};\ntry {\n  const content = aiResponse.content?.[0]?.text || '{}';\n  // JSON aus Antwort extrahieren (falls Markdown-Blöcke)\n  const cleaned = content.replace(/```json|```/g, '').trim();\n  extracted = JSON.parse(cleaned);\n} catch (e) {\n  extracted = {\n    date: null,\n    merchant: null,\n    total_amount: null,\n    category: 'Andere',\n    confidence: 'low',\n  };\n}\n\n// Validierung: Betrag muss positiv sein\nif (extracted.total_amount && extracted.total_amount < 0) {\n  extracted.total_amount = Math.abs(extracted.total_amount);\n}\n\n// Kategorie-Fallback\nconst validCategories = [\n  'Lebensmittel', 'Restaurant & Café', 'Haushalt & Wohnen',\n  'Gesundheit & Apotheke', 'Kleidung & Mode', 'Elektronik & Technik',\n  'Transport & Auto', 'Freizeit & Sport', 'Reisen & Urlaub',\n  'Bildung & Bücher', 'Beauty & Pflege', 'Versicherung & Finanzen',\n  'Sonstiges', 'Andere'\n];\nif (!validCategories.includes(extracted.category)) {\n  extracted.category = 'Andere';\n}\n\nreturn [{\n  json: {\n    // Ownership\n    owner: tokenData.owner,\n    is_shared: tokenData.isShared,\n    paid_by: tokenData.paidBy,\n    \n    // Extrahiert\n    receipt_date: extracted.date || null,\n    merchant: extracted.merchant || null,\n    total_amount: extracted.total_amount || null,\n    category: extracted.category || 'Andere',\n    \n    // MwSt\n    vat_7_base: extracted.vat_7_base || null,\n    vat_7_amount: extracted.vat_7_amount || null,\n    vat_19_base: extracted.vat_19_base || null,\n    vat_19_amount: extracted.vat_19_amount || null,\n    \n    // Metadaten\n    note: tokenData.note,\n    telegram_message_id: tokenData.messageId,\n    telegram_user_id: tokenData.userId,\n    file_path: null, // wird in nächstem Schritt gesetzt\n    extraction_confidence: extracted.confidence || 'medium',\n    \n    // Für spätere Schritte\n    _chatId: tokenData.chatId,\n    _warnings: tokenData.warnings || [],\n    _hasFile: tokenData.hasFile,\n    _base64Data: tokenData.base64Data,\n    _mediaType: tokenData.mediaType,\n    _fileName: tokenData.fileName,\n  }\n}];\n"
+      },
+      "id": "parse-ai-response",
+      "name": "KI-Antwort verarbeiten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 380]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "id": "has-file-for-upload",
+              "leftValue": "={{ $json._hasFile }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-upload",
+      "name": "Datei hochladen?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1980, 380]
+    },
+    {
+      "parameters": {
+        "url": "=http://192.168.178.61:8000/storage/v1/object/receipts/{{ $json._fileName }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "={{ $json._mediaType }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "={{ $json._fileName }}",
+        "options": {}
+      },
+      "id": "upload-to-storage",
+      "name": "Zu Supabase Storage hochladen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2200, 280]
+    },
+    {
+      "parameters": {
+        "jsCode": "// file_path setzen nach erfolgreichem Upload\nconst data = $input.first().json;\nconst parsed = $('KI-Antwort verarbeiten').first().json;\n\nreturn [{\n  json: {\n    ...parsed,\n    file_path: parsed._fileName,\n  }\n}];\n"
+      },
+      "id": "set-file-path",
+      "name": "Dateipfad setzen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2420, 280]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ohne Datei-Upload: Daten direkt weitergeben\nconst data = $input.first().json;\nreturn [{ json: { ...data, file_path: null } }];\n"
+      },
+      "id": "skip-upload",
+      "name": "Upload überspringen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, 500]
+    },
+    {
+      "parameters": {
+        "url": "=http://192.168.178.61:8000/rest/v1/receipts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            },
+            {
+              "name": "Accept-Profile",
+              "value": "belegbot"
+            },
+            {
+              "name": "Content-Profile",
+              "value": "belegbot"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"owner\": \"{{ $json.owner }}\",\n  \"is_shared\": {{ $json.is_shared }},\n  \"paid_by\": \"{{ $json.paid_by }}\",\n  \"receipt_date\": {{ $json.receipt_date ? '\"' + $json.receipt_date + '\"' : 'null' }},\n  \"merchant\": {{ $json.merchant ? '\"' + $json.merchant.replace(/\"/g, '\\\\\"') + '\"' : 'null' }},\n  \"total_amount\": {{ $json.total_amount ?? 'null' }},\n  \"category\": \"{{ $json.category }}\",\n  \"vat_7_base\": {{ $json.vat_7_base ?? 'null' }},\n  \"vat_7_amount\": {{ $json.vat_7_amount ?? 'null' }},\n  \"vat_19_base\": {{ $json.vat_19_base ?? 'null' }},\n  \"vat_19_amount\": {{ $json.vat_19_amount ?? 'null' }},\n  \"note\": {{ $json.note ? '\"' + $json.note.replace(/\"/g, '\\\\\"') + '\"' : 'null' }},\n  \"telegram_message_id\": {{ $json.telegram_message_id ?? 'null' }},\n  \"telegram_user_id\": {{ $json.telegram_user_id ?? 'null' }},\n  \"file_path\": {{ $json.file_path ? '\"' + $json.file_path + '\"' : 'null' }},\n  \"extraction_confidence\": \"{{ $json.extraction_confidence }}\"\n}",
+        "options": {}
+      },
+      "id": "save-to-supabase",
+      "name": "In Supabase speichern",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2640, 380]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Bestätigungsnachricht zusammenstellen\nconst data = $input.first().json;\nconst saved = Array.isArray(data) ? data[0] : data;\n\n// Felder aus dem Input (falls Save Response leer)\nconst src = saved.owner ? saved : $('KI-Antwort verarbeiten').first().json;\n\nconst formatEuro = (v) => v != null ? v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }) : '—';\nconst formatDate = (d) => d ? new Date(d).toLocaleDateString('de-DE') : '—';\nconst capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;\n\nconst bereich = src.is_shared ? '👫 Gemeinsam' : '🔒 Privat';\nconst paidBy = capitalize(src.paid_by);\n\nlet msg = `✅ *Beleg gespeichert*\\n\\n`;\nmsg += `📍 Bereich: ${bereich}\\n`;\nmsg += `🏪 Händler: ${src.merchant || '—'}\\n`;\nmsg += `💶 Betrag: ${formatEuro(src.total_amount)}\\n`;\nmsg += `📅 Datum: ${formatDate(src.receipt_date)}\\n`;\nmsg += `🏷 Kategorie: ${src.category}`;\n\nif (src.category === 'Andere') {\n  msg += ' _(Kategorie nicht erkannt)_';\n}\n\nmsg += `\\n👤 Ausleger: ${paidBy}\\n`;\n\nif (src.note) {\n  msg += `📝 Notiz: ${src.note}\\n`;\n}\n\nif (src.extraction_confidence === 'low') {\n  msg += `\\n⚠️ _Niedrige Erkennungsqualität — bitte in der App prüfen._\\n`;\n}\n\nif (src._warnings && src._warnings.length > 0) {\n  msg += `\\n⚠️ _Hinweis: ${src._warnings.join(', ')}_\\n`;\n}\n\nmsg += `\\n💡 _In der App bearbeitbar: https://xoe8312g4177ugoq.myfritz.net/belegbot/_`;\n\nreturn [{\n  json: {\n    chatId: src._chatId,\n    text: msg,\n  }\n}];\n"
+      },
+      "id": "build-confirmation",
+      "name": "Bestätigung erstellen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2860, 380]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-confirmation",
+      "name": "Bestätigung senden",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [3080, 380],
+      "credentials": {
+        "telegramApi": {
+          "id": "DEINE_TELEGRAM_CREDENTIAL_ID",
+          "name": "BelegBot Telegram"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fehlerbehandlung: Fehlermeldung an Nutzer\nconst errData = $input.first().json;\nconsole.error('BelegBot Fehler:', JSON.stringify(errData));\n\nconst parsed = $('Tokens parsen').first().json;\nreturn [{\n  json: {\n    chatId: parsed.chatId,\n    text: '❌ Fehler beim Speichern des Belegs. Bitte versuche es erneut oder wende dich an den Administrator.',\n  }\n}];\n"
+      },
+      "id": "error-handler",
+      "name": "Fehlerbehandlung",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2640, 600]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {}
+      },
+      "id": "send-error",
+      "name": "Fehlermeldung senden",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2860, 600],
+      "credentials": {
+        "telegramApi": {
+          "id": "DEINE_TELEGRAM_CREDENTIAL_ID",
+          "name": "BelegBot Telegram"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [[{ "node": "Tokens parsen", "type": "main", "index": 0 }]]
+    },
+    "Tokens parsen": {
+      "main": [[{ "node": "Unbekannter User?", "type": "main", "index": 0 }]]
+    },
+    "Unbekannter User?": {
+      "main": [
+        [{ "node": "Unbekannter User Meldung", "type": "main", "index": 0 }],
+        [{ "node": "Hat Dateianhang?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Hat Dateianhang?": {
+      "main": [
+        [{ "node": "Datei-Pfad holen", "type": "main", "index": 0 }],
+        [{ "node": "Ohne Datei fortfahren", "type": "main", "index": 0 }]
+      ]
+    },
+    "Datei-Pfad holen": {
+      "main": [[{ "node": "Datei herunterladen", "type": "main", "index": 0 }]]
+    },
+    "Datei herunterladen": {
+      "main": [[{ "node": "Datei vorbereiten", "type": "main", "index": 0 }]]
+    },
+    "Datei vorbereiten": {
+      "main": [[{ "node": "Claude KI-Extraktion", "type": "main", "index": 0 }]]
+    },
+    "Ohne Datei fortfahren": {
+      "main": [[{ "node": "Claude KI-Extraktion", "type": "main", "index": 0 }]]
+    },
+    "Claude KI-Extraktion": {
+      "main": [[{ "node": "KI-Antwort verarbeiten", "type": "main", "index": 0 }]]
+    },
+    "KI-Antwort verarbeiten": {
+      "main": [[{ "node": "Datei hochladen?", "type": "main", "index": 0 }]]
+    },
+    "Datei hochladen?": {
+      "main": [
+        [{ "node": "Zu Supabase Storage hochladen", "type": "main", "index": 0 }],
+        [{ "node": "Upload überspringen", "type": "main", "index": 0 }]
+      ]
+    },
+    "Zu Supabase Storage hochladen": {
+      "main": [[{ "node": "Dateipfad setzen", "type": "main", "index": 0 }]]
+    },
+    "Dateipfad setzen": {
+      "main": [[{ "node": "In Supabase speichern", "type": "main", "index": 0 }]]
+    },
+    "Upload überspringen": {
+      "main": [[{ "node": "In Supabase speichern", "type": "main", "index": 0 }]]
+    },
+    "In Supabase speichern": {
+      "main": [[{ "node": "Bestätigung erstellen", "type": "main", "index": 0 }]]
+    },
+    "Bestätigung erstellen": {
+      "main": [[{ "node": "Bestätigung senden", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [{ "name": "BelegBot" }],
+  "triggerCount": 1,
+  "updatedAt": "2025-01-01T00:00:00.000Z",
+  "versionId": "1"
+}
