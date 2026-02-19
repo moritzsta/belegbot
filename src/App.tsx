@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { User, Area } from './types';
-import UserSelector from './components/UserSelector';
+import { supabase } from './config/supabase';
+import LoginForm from './components/LoginForm';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import ReceiptList from './components/ReceiptList';
@@ -8,29 +9,59 @@ import Statistics from './components/Statistics';
 
 type Page = 'dashboard' | 'list' | 'stats';
 
-const STORAGE_KEY = 'belegbot_user';
+const LENA_EMAIL = 'reising.lena@web.de';
+
+function emailToUser(email: string): User {
+  return email === LENA_EMAIL ? 'lena' : 'moritz';
+}
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    return (localStorage.getItem(STORAGE_KEY) as User | null);
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [area, setArea] = useState<Area>('private');
   const [page, setPage] = useState<Page>('dashboard');
 
-  const handleLogin = (user: User) => {
-    localStorage.setItem(STORAGE_KEY, user);
-    setCurrentUser(user);
-  };
+  useEffect(() => {
+    // Check existing session on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.email) {
+        setCurrentUser(emailToUser(session.user.email));
+      }
+      setLoading(false);
+    });
 
-  const handleLogout = () => {
-    localStorage.removeItem(STORAGE_KEY);
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user?.email) {
+        setCurrentUser(emailToUser(session.user.email));
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setCurrentUser(null);
     setArea('private');
     setPage('dashboard');
   };
 
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'var(--bg-base)', color: 'var(--text-muted)', fontSize: '0.9rem',
+      }}>
+        Laden…
+      </div>
+    );
+  }
+
   if (!currentUser) {
-    return <UserSelector onSelect={handleLogin} />;
+    return <LoginForm />;
   }
 
   return (
