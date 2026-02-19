@@ -16,6 +16,7 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete }: Pro
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const [form, setForm] = useState({
     merchant: receipt.merchant ?? '',
@@ -34,11 +35,14 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete }: Pro
   // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        if (lightboxOpen) setLightboxOpen(false);
+        else onClose();
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [onClose]);
+  }, [onClose, lightboxOpen]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -72,7 +76,7 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete }: Pro
   const isPdf = receipt.file_path?.toLowerCase().endsWith('.pdf');
   const catColor = getCategoryColor(receipt.category);
 
-  return (
+  return (<>
     <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal-content">
         {/* Header */}
@@ -89,7 +93,7 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete }: Pro
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {!editing && (
-              <button className="btn btn-ghost btn-sm" onClick={() => setEditing(true)}>
+              <button className="btn btn-primary btn-sm" onClick={() => setEditing(true)}>
                 Bearbeiten
               </button>
             )}
@@ -104,12 +108,13 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete }: Pro
           {fileUrl && (
             <div style={{ borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-input)' }}>
               {isPdf ? (
-                <a href={fileUrl} target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', color: 'var(--accent)', fontSize: '0.875rem', textDecoration: 'none' }}>
+                <button onClick={() => setLightboxOpen(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', color: 'var(--accent)', fontSize: '0.875rem', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}>
                   <ExternalLink size={15} /> PDF öffnen
-                </a>
+                </button>
               ) : (
-                <img src={fileUrl} alt="Beleg" style={{ width: '100%', maxHeight: 200, objectFit: 'contain', display: 'block' }} />
+                <img src={fileUrl} alt="Beleg" onClick={() => setLightboxOpen(true)}
+                  style={{ width: '100%', maxHeight: 360, objectFit: 'contain', display: 'block', cursor: 'pointer' }} />
               )}
             </div>
           )}
@@ -222,13 +227,14 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete }: Pro
               </>
             ) : (
               <>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  Erstellt: {formatDate(receipt.created_at)}
-                </div>
+                <button onClick={handleDelete} className={`btn btn-sm ${confirmDelete ? 'btn-danger' : 'btn-ghost'}`} disabled={deleting}>
+                  <Trash2 size={13} />
+                  {deleting ? 'Löschen…' : confirmDelete ? 'Wirklich löschen?' : 'Löschen'}
+                </button>
                 {fileUrl && (
-                  <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>
+                  <button onClick={() => setLightboxOpen(true)} className="btn btn-ghost btn-sm">
                     <ExternalLink size={13} /> Original öffnen
-                  </a>
+                  </button>
                 )}
               </>
             )}
@@ -236,7 +242,46 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete }: Pro
         </div>
       </div>
     </div>
-  );
+
+    {/* Lightbox */}
+    {lightboxOpen && fileUrl && (
+      <div
+        onClick={() => setLightboxOpen(false)}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(0,0,0,0.9)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <button
+          onClick={() => setLightboxOpen(false)}
+          style={{
+            position: 'absolute', top: 16, right: 16,
+            background: 'rgba(255,255,255,0.1)', border: 'none',
+            borderRadius: '50%', width: 36, height: 36,
+            cursor: 'pointer', color: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <X size={18} />
+        </button>
+        {isPdf ? (
+          <iframe
+            src={fileUrl}
+            onClick={e => e.stopPropagation()}
+            style={{ width: '90vw', height: '90vh', border: 'none', borderRadius: 4 }}
+          />
+        ) : (
+          <img
+            src={fileUrl}
+            alt="Beleg Vollansicht"
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: 4 }}
+          />
+        )}
+      </div>
+    )}
+  </>);
 }
 
 function InfoField({ label, value, mono, accent, span }: {
