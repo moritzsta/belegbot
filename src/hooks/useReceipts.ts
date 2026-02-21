@@ -87,6 +87,27 @@ export function useReceipts(currentUser: User, area: Area) {
     }
   };
 
+  const createReceipt = async (data: Partial<Receipt>): Promise<boolean> => {
+    try {
+      const { error: err } = await supabase
+        .from('receipts')
+        .insert({
+          ...data,
+          owner: currentUser,
+          extraction_confidence: null,
+          file_path: null,
+          telegram_message_id: null,
+          telegram_user_id: null,
+        });
+      if (err) throw err;
+      await fetchReceipts();
+      return true;
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erstellen fehlgeschlagen');
+      return false;
+    }
+  };
+
   const resetFilters = () => setFilters(DEFAULT_FILTERS);
 
   const activeFilterCount = Object.values(filters).filter(v => v !== '').length;
@@ -102,6 +123,7 @@ export function useReceipts(currentUser: User, area: Area) {
     refetch: fetchReceipts,
     updateReceipt,
     deleteReceipt,
+    createReceipt,
   };
 }
 

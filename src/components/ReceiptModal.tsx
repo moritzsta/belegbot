@@ -1,35 +1,41 @@
 import { useState, useEffect } from 'react';
 import { X, ExternalLink, Save, Trash2, ArrowLeftRight, AlertCircle } from 'lucide-react';
-import type { Receipt, User } from '../types';
+import type { Receipt, User, Area } from '../types';
 import { CATEGORIES, formatEuro, formatDate, toInputDate, getCategoryColor } from '../utils/categories';
 import { getReceiptUrl } from '../config/supabase';
 
 interface Props {
-  receipt: Receipt;
+  receipt?: Receipt;
   onClose: () => void;
-  onSave: (id: string, updates: Partial<Receipt>) => Promise<boolean>;
-  onDelete: (id: string) => Promise<boolean>;
+  onSave?: (id: string, updates: Partial<Receipt>) => Promise<boolean>;
+  onDelete?: (id: string) => Promise<boolean>;
+  isNew?: boolean;
+  onCreate?: (data: Partial<Receipt>) => Promise<boolean>;
+  defaultArea?: Area;
+  defaultUser?: User;
 }
 
-export default function ReceiptModal({ receipt, onClose, onSave, onDelete }: Props) {
-  const [editing, setEditing] = useState(false);
+export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew, onCreate, defaultArea, defaultUser }: Props) {
+  const [editing, setEditing] = useState(!!isNew);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
+  const todayStr = new Date().toISOString().split('T')[0];
+
   const [form, setForm] = useState({
-    merchant: receipt.merchant ?? '',
-    receipt_date: toInputDate(receipt.receipt_date),
-    total_amount: receipt.total_amount?.toString() ?? '',
-    category: receipt.category,
-    paid_by: receipt.paid_by as User,
-    note: receipt.note ?? '',
-    is_shared: receipt.is_shared,
-    vat_7_base: receipt.vat_7_base?.toString() ?? '',
-    vat_7_amount: receipt.vat_7_amount?.toString() ?? '',
-    vat_19_base: receipt.vat_19_base?.toString() ?? '',
-    vat_19_amount: receipt.vat_19_amount?.toString() ?? '',
+    merchant: receipt?.merchant ?? '',
+    receipt_date: isNew ? todayStr : toInputDate(receipt?.receipt_date),
+    total_amount: receipt?.total_amount?.toString() ?? '',
+    category: receipt?.category ?? 'Sonstiges',
+    paid_by: (receipt?.paid_by ?? defaultUser ?? 'moritz') as User,
+    note: receipt?.note ?? '',
+    is_shared: receipt?.is_shared ?? (defaultArea === 'shared'),
+    vat_7_base: receipt?.vat_7_base?.toString() ?? '',
+    vat_7_amount: receipt?.vat_7_amount?.toString() ?? '',
+    vat_19_base: receipt?.vat_19_base?.toString() ?? '',
+    vat_19_amount: receipt?.vat_19_amount?.toString() ?? '',
   });
 
   // Close on Escape
@@ -59,12 +65,20 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete }: Pro
       vat_19_base: form.vat_19_base ? parseFloat(form.vat_19_base) : null,
       vat_19_amount: form.vat_19_amount ? parseFloat(form.vat_19_amount) : null,
     };
-    const ok = await onSave(receipt.id, updates);
+    let ok: boolean;
+    if (isNew && onCreate) {
+      ok = await onCreate(updates);
+    } else if (onSave && receipt) {
+      ok = await onSave(receipt.id, updates);
+    } else {
+      ok = false;
+    }
     setSaving(false);
     if (ok) { setEditing(false); onClose(); }
   };
 
   const handleDelete = async () => {
+    if (!receipt || !onDelete) return;
     if (!confirmDelete) { setConfirmDelete(true); return; }
     setDeleting(true);
     await onDelete(receipt.id);
@@ -72,9 +86,9 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete }: Pro
     onClose();
   };
 
-  const fileUrl = getReceiptUrl(receipt.file_path);
-  const isPdf = receipt.file_path?.toLowerCase().endsWith('.pdf');
-  const catColor = getCategoryColor(receipt.category);
+  const fileUrl = !isNew ? getReceiptUrl(receipt?.file_path ?? null) : null;
+  const isPdf = receipt?.file_path?.toLowerCase().endsWith('.pdf');
+  const catColor = getCategoryColor(receipt?.category ?? form.category);
 
   return (<>
     <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -88,19 +102,12 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete }: Pro
               boxShadow: `0 0 6px ${catColor}`,
             }} />
             <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '1.05rem' }}>
-              {editing ? 'Beleg bearbeiten' : (receipt.merchant ?? 'Beleg Details')}
+              {isNew ? 'Neuer Beleg' : editing ? 'Beleg bearbeiten' : (receipt?.merchant ?? 'Beleg Details')}
             </h2>
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {!editing && (
-              <button className="btn btn-primary btn-sm" onClick={() => setEditing(true)}>
-                Bearbeiten
-              </button>
-            )}
-            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
-              <X size={18} />
-            </button>
-          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
+            <X size={18} />
+          </button>
         </div>
 
         <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -120,7 +127,7 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete }: Pro
           )}
 
           {/* Confidence warning */}
-          {receipt.extraction_confidence === 'low' && (
+          {!isNew && receipt?.extraction_confidence === 'low' && (
             <div style={{
               display: 'flex', gap: 8, alignItems: 'flex-start',
               padding: '10px 14px',
@@ -135,7 +142,7 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete }: Pro
           )}
 
           {/* Mode: View */}
-          {!editing ? (
+          {!editing && receipt ? (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <InfoField label="Händler" value={receipt.merchant} />
               <InfoField label="Datum" value={formatDate(receipt.receipt_date)} />
@@ -213,13 +220,15 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete }: Pro
           <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 4, borderTop: '1px solid var(--border)' }}>
             {editing ? (
               <>
-                <button onClick={handleDelete} className={`btn btn-sm ${confirmDelete ? 'btn-danger' : 'btn-ghost'}`} disabled={deleting}>
-                  <Trash2 size={13} />
-                  {deleting ? 'Löschen…' : confirmDelete ? 'Wirklich löschen?' : 'Löschen'}
-                </button>
+                {!isNew ? (
+                  <button onClick={handleDelete} className={`btn btn-sm ${confirmDelete ? 'btn-danger' : 'btn-ghost'}`} disabled={deleting}>
+                    <Trash2 size={13} />
+                    {deleting ? 'Löschen…' : confirmDelete ? 'Wirklich löschen?' : 'Löschen'}
+                  </button>
+                ) : <div />}
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => { setEditing(false); setConfirmDelete(false); }} className="btn btn-ghost btn-sm">Abbrechen</button>
-                  <button onClick={handleSave} className={`btn btn-sm ${receipt.is_shared ? 'btn-teal' : 'btn-primary'}`} disabled={saving}>
+                  <button onClick={onClose} className="btn btn-ghost btn-sm">Abbrechen</button>
+                  <button onClick={handleSave} className={`btn btn-sm ${form.is_shared ? 'btn-teal' : 'btn-primary'}`} disabled={saving}>
                     <Save size={13} />
                     {saving ? 'Speichern…' : 'Speichern'}
                   </button>
@@ -231,11 +240,16 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete }: Pro
                   <Trash2 size={13} />
                   {deleting ? 'Löschen…' : confirmDelete ? 'Wirklich löschen?' : 'Löschen'}
                 </button>
-                {fileUrl && (
-                  <button onClick={() => setLightboxOpen(true)} className="btn btn-ghost btn-sm">
-                    <ExternalLink size={13} /> Original öffnen
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {fileUrl && (
+                    <button onClick={() => setLightboxOpen(true)} className="btn btn-ghost btn-sm">
+                      <ExternalLink size={13} /> Original öffnen
+                    </button>
+                  )}
+                  <button className="btn btn-primary btn-sm" onClick={() => setEditing(true)}>
+                    Bearbeiten
                   </button>
-                )}
+                </div>
               </>
             )}
           </div>

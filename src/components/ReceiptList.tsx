@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Receipt, RefreshCw } from 'lucide-react';
+import { Receipt, RefreshCw, Plus } from 'lucide-react';
 import { useReceipts } from '../hooks/useReceipts';
 import FilterBar from './FilterBar';
 import ReceiptModal from './ReceiptModal';
@@ -13,7 +13,8 @@ interface Props {
 
 export default function ReceiptList({ currentUser, area }: Props) {
   const [selectedReceipt, setSelectedReceipt] = useState<ReceiptType | null>(null);
-  const { receipts, loading, error, filters, setFilters, resetFilters, activeFilterCount, refetch, updateReceipt, deleteReceipt } = useReceipts(currentUser, area);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const { receipts, loading, error, filters, setFilters, resetFilters, activeFilterCount, refetch, updateReceipt, deleteReceipt, createReceipt } = useReceipts(currentUser, area);
 
   const isShared = area === 'shared';
   const accentColor = isShared ? 'var(--teal)' : 'var(--accent)';
@@ -31,10 +32,16 @@ export default function ReceiptList({ currentUser, area }: Props) {
             </p>
           )}
         </div>
-        <button onClick={refetch} className="btn btn-ghost btn-sm" disabled={loading}>
-          <RefreshCw size={14} style={{ animation: loading ? 'spin 0.6s linear infinite' : 'none' }} />
-          Aktualisieren
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setShowCreateModal(true)} className={`btn btn-sm ${isShared ? 'btn-teal' : 'btn-primary'}`}>
+            <Plus size={14} />
+            Neuer Beleg
+          </button>
+          <button onClick={refetch} className="btn btn-ghost btn-sm" disabled={loading}>
+            <RefreshCw size={14} style={{ animation: loading ? 'spin 0.6s linear infinite' : 'none' }} />
+            Aktualisieren
+          </button>
+        </div>
       </div>
 
       <FilterBar
@@ -84,6 +91,16 @@ export default function ReceiptList({ currentUser, area }: Props) {
           onClose={() => setSelectedReceipt(null)}
           onSave={updateReceipt}
           onDelete={deleteReceipt}
+        />
+      )}
+
+      {showCreateModal && (
+        <ReceiptModal
+          isNew
+          onClose={() => setShowCreateModal(false)}
+          onCreate={createReceipt}
+          defaultArea={area}
+          defaultUser={currentUser}
         />
       )}
     </div>

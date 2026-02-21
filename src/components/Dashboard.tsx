@@ -1,29 +1,39 @@
-import { TrendingUp, Receipt, Calendar, Tag } from 'lucide-react';
+import { useState } from 'react';
+import { TrendingUp, Receipt, Calendar, Tag, Plus } from 'lucide-react';
 import { useDashboardStats } from '../hooks/useReceipts';
-import type { User, Area } from '../types';
+import ReceiptModal from './ReceiptModal';
+import type { Receipt as ReceiptType, User, Area } from '../types';
 import { formatEuro, formatDate, getCategoryColor } from '../utils/categories';
 
 interface Props {
   currentUser: User;
   area: Area;
   onNavigateToList: () => void;
+  onCreate: (data: Partial<ReceiptType>) => Promise<boolean>;
 }
 
-export default function Dashboard({ currentUser, area, onNavigateToList }: Props) {
+export default function Dashboard({ currentUser, area, onNavigateToList, onCreate }: Props) {
   const stats = useDashboardStats(currentUser, area);
   const isShared = area === 'shared';
   const accentColor = isShared ? 'var(--teal)' : 'var(--accent)';
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   return (
     <div className="animate-fade-in">
       {/* Page Title */}
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
-          {isShared ? 'Gemeinsame Ausgaben' : 'Meine Ausgaben'}
-        </h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: 4 }}>
-          {isShared ? 'Ausgaben von Lena & Moritz' : `Nur deine privaten Belege`}
-        </p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+            {isShared ? 'Gemeinsame Ausgaben' : 'Meine Ausgaben'}
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: 4 }}>
+            {isShared ? 'Ausgaben von Lena & Moritz' : `Nur deine privaten Belege`}
+          </p>
+        </div>
+        <button onClick={() => setShowCreateModal(true)} className={`btn btn-sm ${isShared ? 'btn-teal' : 'btn-primary'}`}>
+          <Plus size={14} />
+          Neuer Beleg
+        </button>
       </div>
 
       {/* Stats row */}
@@ -155,6 +165,16 @@ export default function Dashboard({ currentUser, area, onNavigateToList }: Props
           )}
         </div>
       </div>
+
+      {showCreateModal && (
+        <ReceiptModal
+          isNew
+          onClose={() => setShowCreateModal(false)}
+          onCreate={onCreate}
+          defaultArea={area}
+          defaultUser={currentUser}
+        />
+      )}
     </div>
   );
 }

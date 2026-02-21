@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import type { User, Area } from './types';
+import { useState, useEffect, useCallback } from 'react';
+import type { User, Area, Receipt } from './types';
 import { supabase } from './config/supabase';
 import LoginForm from './components/LoginForm';
 import Layout from './components/Layout';
@@ -42,6 +42,25 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  const createReceipt = useCallback(async (data: Partial<Receipt>): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('receipts')
+        .insert({
+          ...data,
+          owner: currentUser,
+          extraction_confidence: null,
+          file_path: null,
+          telegram_message_id: null,
+          telegram_user_id: null,
+        });
+      if (error) throw error;
+      return true;
+    } catch {
+      return false;
+    }
+  }, [currentUser]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setCurrentUser(null);
@@ -78,6 +97,7 @@ export default function App() {
           currentUser={currentUser}
           area={area}
           onNavigateToList={() => setPage('list')}
+          onCreate={createReceipt}
         />
       )}
       {page === 'list' && (
