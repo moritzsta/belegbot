@@ -8,6 +8,13 @@
       "when": 1785341329119,
       "tag": "0000_sloppy_firedrake",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785352286254,
+      "tag": "0001_bored_vector",
+      "breakpoints": true
     }
   ]
 }
