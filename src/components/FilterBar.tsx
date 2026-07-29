@@ -1,6 +1,8 @@
+"use client";
+
 import { Search, X, SlidersHorizontal } from 'lucide-react';
-import type { ReceiptFilters, Area } from '../types';
-import { CATEGORIES } from '../utils/categories';
+import type { ReceiptFilters, Area } from '@/lib/types';
+import { CATEGORIES } from '@/lib/categories';
 import { useState } from 'react';
 
 interface Props {

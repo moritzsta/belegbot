@@ -1,9 +1,11 @@
+"use client";
+
 import { useState } from 'react';
 import { TrendingUp, Receipt, Calendar, Tag, Plus } from 'lucide-react';
-import { useDashboardStats } from '../hooks/useReceipts';
+import { useDashboardStats } from '@/hooks/useReceipts';
 import ReceiptModal from './ReceiptModal';
-import type { Receipt as ReceiptType, User, Area } from '../types';
-import { formatEuro, formatDate, getCategoryColor } from '../utils/categories';
+import type { Receipt as ReceiptType, User, Area } from '@/lib/types';
+import { formatEuro, formatDate, getCategoryColor } from '@/lib/categories';
 
 interface Props {
   currentUser: User;
@@ -203,7 +205,7 @@ function StatCard({ label, value, icon, accent, loading, mono = true }: {
         <div style={{
           fontSize: '1.4rem',
           fontFamily: mono ? 'var(--font-mono)' : 'var(--font-heading)',
-          fontWeight: mono ? 700 : 700,
+          fontWeight: 700,
           color: 'var(--text-primary)',
           lineHeight: 1.2,
         }}>

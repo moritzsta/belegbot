@@ -1,10 +1,12 @@
+"use client";
+
 import { useState } from 'react';
 import { Receipt, RefreshCw, Plus } from 'lucide-react';
-import { useReceipts } from '../hooks/useReceipts';
+import { useReceipts } from '@/hooks/useReceipts';
 import FilterBar from './FilterBar';
 import ReceiptModal from './ReceiptModal';
-import type { User, Area, Receipt as ReceiptType } from '../types';
-import { formatEuro, formatDate, getCategoryColor, capitalize } from '../utils/categories';
+import type { User, Area, Receipt as ReceiptType } from '@/lib/types';
+import { formatEuro, formatDate, getCategoryColor, capitalize } from '@/lib/categories';
 
 interface Props {
   currentUser: User;

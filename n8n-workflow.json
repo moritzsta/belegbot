@@ -1,5 +1,5 @@
 {
-  "name": "BelegBot - Telegram zu Supabase",
+  "name": "BelegBot - Telegram zu belegbot",
   "nodes": [
     {
       "parameters": {
@@ -192,121 +192,34 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {},
-          "conditions": [
-            {
-              "id": "has-file-for-upload",
-              "leftValue": "={{ $json._hasFile }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              }
-            }
-          ],
-          "combinator": "and"
-        }
-      },
-      "id": "check-upload",
-      "name": "Datei hochladen?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [1980, 380]
-    },
-    {
-      "parameters": {
-        "url": "=http://192.168.178.61:8000/storage/v1/object/receipts/{{ $json._fileName }}",
+        "url": "={{ $env.BELEGBOT_INGEST_URL }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "={{ $json._mediaType }}"
-            }
-          ]
-        },
-        "sendBody": true,
-        "contentType": "binaryData",
-        "inputDataFieldName": "={{ $json._fileName }}",
-        "options": {}
-      },
-      "id": "upload-to-storage",
-      "name": "Zu Supabase Storage hochladen",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [2200, 280]
-    },
-    {
-      "parameters": {
-        "jsCode": "// file_path setzen nach erfolgreichem Upload\nconst data = $input.first().json;\nconst parsed = $('KI-Antwort verarbeiten').first().json;\n\nreturn [{\n  json: {\n    ...parsed,\n    file_path: parsed._fileName,\n  }\n}];\n"
-      },
-      "id": "set-file-path",
-      "name": "Dateipfad setzen",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [2420, 280]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Ohne Datei-Upload: Daten direkt weitergeben\nconst data = $input.first().json;\nreturn [{ json: { ...data, file_path: null } }];\n"
-      },
-      "id": "skip-upload",
-      "name": "Upload überspringen",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [2200, 500]
-    },
-    {
-      "parameters": {
-        "url": "=http://192.168.178.61:8000/rest/v1/receipts",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+              "name": "x-belegbot-ingest-key",
+              "value": "={{ $env.BELEGBOT_INGEST_SECRET }}"
             },
             {
               "name": "Content-Type",
               "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=representation"
-            },
-            {
-              "name": "Accept-Profile",
-              "value": "belegbot"
-            },
-            {
-              "name": "Content-Profile",
-              "value": "belegbot"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"owner\": \"{{ $json.owner }}\",\n  \"is_shared\": {{ $json.is_shared }},\n  \"paid_by\": \"{{ $json.paid_by }}\",\n  \"receipt_date\": {{ $json.receipt_date ? '\"' + $json.receipt_date + '\"' : 'null' }},\n  \"merchant\": {{ $json.merchant ? '\"' + $json.merchant.replace(/\"/g, '\\\\\"') + '\"' : 'null' }},\n  \"total_amount\": {{ $json.total_amount ?? 'null' }},\n  \"category\": \"{{ $json.category }}\",\n  \"vat_7_base\": {{ $json.vat_7_base ?? 'null' }},\n  \"vat_7_amount\": {{ $json.vat_7_amount ?? 'null' }},\n  \"vat_19_base\": {{ $json.vat_19_base ?? 'null' }},\n  \"vat_19_amount\": {{ $json.vat_19_amount ?? 'null' }},\n  \"note\": {{ $json.note ? '\"' + $json.note.replace(/\"/g, '\\\\\"') + '\"' : 'null' }},\n  \"telegram_message_id\": {{ $json.telegram_message_id ?? 'null' }},\n  \"telegram_user_id\": {{ $json.telegram_user_id ?? 'null' }},\n  \"file_path\": {{ $json.file_path ? '\"' + $json.file_path + '\"' : 'null' }},\n  \"extraction_confidence\": \"{{ $json.extraction_confidence }}\"\n}",
+        "jsonBody": "={\n  \"owner\": \"{{ $json.owner }}\",\n  \"is_shared\": {{ $json.is_shared }},\n  \"paid_by\": \"{{ $json.paid_by }}\",\n  \"receipt_date\": {{ $json.receipt_date ? '\"' + $json.receipt_date + '\"' : 'null' }},\n  \"merchant\": {{ $json.merchant ? JSON.stringify($json.merchant) : 'null' }},\n  \"total_amount\": {{ $json.total_amount ?? 'null' }},\n  \"category\": \"{{ $json.category }}\",\n  \"vat_7_base\": {{ $json.vat_7_base ?? 'null' }},\n  \"vat_7_amount\": {{ $json.vat_7_amount ?? 'null' }},\n  \"vat_19_base\": {{ $json.vat_19_base ?? 'null' }},\n  \"vat_19_amount\": {{ $json.vat_19_amount ?? 'null' }},\n  \"note\": {{ $json.note ? JSON.stringify($json.note) : 'null' }},\n  \"telegram_message_id\": {{ $json.telegram_message_id ?? 'null' }},\n  \"telegram_user_id\": {{ $json.telegram_user_id ?? 'null' }},\n  \"extraction_confidence\": \"{{ $json.extraction_confidence }}\"{{ $json._base64Data ? ',\\n  \"file\": {\"data\": \"' + $json._base64Data + '\", \"contentType\": \"' + $json._mediaType + '\", \"ext\": \"' + ($json._mediaType === 'application/pdf' ? 'pdf' : 'jpg') + '\"}' : '' }}\n}",
         "options": {}
       },
-      "id": "save-to-supabase",
-      "name": "In Supabase speichern",
+      "id": "save-to-belegbot",
+      "name": "In belegbot speichern",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2640, 380]
+      "position": [2200, 380]
     },
     {
       "parameters": {
-        "jsCode": "// Bestätigungsnachricht zusammenstellen\nconst data = $input.first().json;\nconst saved = Array.isArray(data) ? data[0] : data;\n\n// Felder aus dem Input (falls Save Response leer)\nconst src = saved.owner ? saved : $('KI-Antwort verarbeiten').first().json;\n\nconst formatEuro = (v) => v != null ? v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }) : '—';\nconst formatDate = (d) => d ? new Date(d).toLocaleDateString('de-DE') : '—';\nconst capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;\n\nconst bereich = src.is_shared ? '👫 Gemeinsam' : '🔒 Privat';\nconst paidBy = capitalize(src.paid_by);\n\nlet msg = `✅ *Beleg gespeichert*\\n\\n`;\nmsg += `📍 Bereich: ${bereich}\\n`;\nmsg += `🏪 Händler: ${src.merchant || '—'}\\n`;\nmsg += `💶 Betrag: ${formatEuro(src.total_amount)}\\n`;\nmsg += `📅 Datum: ${formatDate(src.receipt_date)}\\n`;\nmsg += `🏷 Kategorie: ${src.category}`;\n\nif (src.category === 'Andere') {\n  msg += ' _(Kategorie nicht erkannt)_';\n}\n\nmsg += `\\n👤 Ausleger: ${paidBy}\\n`;\n\nif (src.note) {\n  msg += `📝 Notiz: ${src.note}\\n`;\n}\n\nif (src.extraction_confidence === 'low') {\n  msg += `\\n⚠️ _Niedrige Erkennungsqualität — bitte in der App prüfen._\\n`;\n}\n\nif (src._warnings && src._warnings.length > 0) {\n  msg += `\\n⚠️ _Hinweis: ${src._warnings.join(', ')}_\\n`;\n}\n\nmsg += `\\n💡 _In der App bearbeitbar: https://xoe8312g4177ugoq.myfritz.net/belegbot/_`;\n\nreturn [{\n  json: {\n    chatId: src._chatId,\n    text: msg,\n  }\n}];\n"
+        "jsCode": "// Bestätigungsnachricht zusammenstellen\nconst data = $input.first().json;\nconst saved = Array.isArray(data) ? data[0] : data;\n\n// Felder aus dem Input (falls Save Response leer)\nconst src = saved.owner ? saved : $('KI-Antwort verarbeiten').first().json;\n\nconst formatEuro = (v) => v != null ? v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }) : '—';\nconst formatDate = (d) => d ? new Date(d).toLocaleDateString('de-DE') : '—';\nconst capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;\n\nconst bereich = src.is_shared ? '👫 Gemeinsam' : '🔒 Privat';\nconst paidBy = capitalize(src.paid_by);\n\nlet msg = `✅ *Beleg gespeichert*\\n\\n`;\nmsg += `📍 Bereich: ${bereich}\\n`;\nmsg += `🏪 Händler: ${src.merchant || '—'}\\n`;\nmsg += `💶 Betrag: ${formatEuro(src.total_amount)}\\n`;\nmsg += `📅 Datum: ${formatDate(src.receipt_date)}\\n`;\nmsg += `🏷 Kategorie: ${src.category}`;\n\nif (src.category === 'Andere') {\n  msg += ' _(Kategorie nicht erkannt)_';\n}\n\nmsg += `\\n👤 Ausleger: ${paidBy}\\n`;\n\nif (src.note) {\n  msg += `📝 Notiz: ${src.note}\\n`;\n}\n\nif (src.extraction_confidence === 'low') {\n  msg += `\\n⚠️ _Niedrige Erkennungsqualität — bitte in der App prüfen._\\n`;\n}\n\nif (src._warnings && src._warnings.length > 0) {\n  msg += `\\n⚠️ _Hinweis: ${src._warnings.join(', ')}_\\n`;\n}\n\nmsg += `\\n💡 _In der App bearbeitbar: https://belege.staebler.dev/_`;\n\nreturn [{\n  json: {\n    chatId: src._chatId,\n    text: msg,\n  }\n}];\n"
       },
       "id": "build-confirmation",
       "name": "Bestätigung erstellen",
@@ -398,24 +311,9 @@
       "main": [[{ "node": "KI-Antwort verarbeiten", "type": "main", "index": 0 }]]
     },
     "KI-Antwort verarbeiten": {
-      "main": [[{ "node": "Datei hochladen?", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "In belegbot speichern", "type": "main", "index": 0 }]]
     },
-    "Datei hochladen?": {
-      "main": [
-        [{ "node": "Zu Supabase Storage hochladen", "type": "main", "index": 0 }],
-        [{ "node": "Upload überspringen", "type": "main", "index": 0 }]
-      ]
-    },
-    "Zu Supabase Storage hochladen": {
-      "main": [[{ "node": "Dateipfad setzen", "type": "main", "index": 0 }]]
-    },
-    "Dateipfad setzen": {
-      "main": [[{ "node": "In Supabase speichern", "type": "main", "index": 0 }]]
-    },
-    "Upload überspringen": {
-      "main": [[{ "node": "In Supabase speichern", "type": "main", "index": 0 }]]
-    },
-    "In Supabase speichern": {
+    "In belegbot speichern": {
       "main": [[{ "node": "Bestätigung erstellen", "type": "main", "index": 0 }]]
     },
     "Bestätigung erstellen": {
