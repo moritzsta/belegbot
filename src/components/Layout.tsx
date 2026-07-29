@@ -1,7 +1,9 @@
+"use client";
+
 import React from 'react';
 import { LayoutDashboard, List, BarChart3, LogOut } from 'lucide-react';
-import type { User, Area } from '../types';
-import { capitalize } from '../utils/categories';
+import type { User, Area } from '@/lib/types';
+import { capitalize } from '@/lib/categories';
 
 type NavPage = 'dashboard' | 'list' | 'stats';
 

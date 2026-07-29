@@ -3,6 +3,12 @@ node_modules/
 
 # Build output
 dist/
+.next/
+next-env.d.ts
+/out/
+
+# DB CA-Zertifikat (lokal)
+/certs/
 
 # Environment variables — NIEMALS committen!
 .env

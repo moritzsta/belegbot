@@ -1,12 +1,13 @@
+"use client";
+
 import { useState, useEffect } from 'react';
 import {
   PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, ResponsiveContainer, LineChart, Line,
 } from 'recharts';
-import { supabase } from '../config/supabase';
-import type { User, Area } from '../types';
-import type { Receipt } from '../types';
-import { formatEuro, getCategoryColor, capitalize } from '../utils/categories';
+import { listReceiptsSince } from '@/lib/actions/receipts';
+import type { User, Area, Receipt } from '@/lib/types';
+import { formatEuro, getCategoryColor, capitalize } from '@/lib/categories';
 
 interface Props {
   currentUser: User;
@@ -28,17 +29,16 @@ export default function Statistics({ currentUser, area }: Props) {
       setLoading(true);
       const now = new Date();
       let since: string;
-      if (period === 'month') since = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-      else if (period === 'quarter') since = new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString().split('T')[0];
-      else since = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+      if (period === 'month') since = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]!;
+      else if (period === 'quarter') since = new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString().split('T')[0]!;
+      else since = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0]!;
 
-      let q = supabase.from('receipts').select('*').gte('receipt_date', since);
-      if (isShared) q = q.eq('is_shared', true);
-      else q = q.eq('is_shared', false).eq('owner', currentUser);
-
-      const { data } = await q;
-      setReceipts((data ?? []) as Receipt[]);
-      setLoading(false);
+      try {
+        const data = await listReceiptsSince(area, since);
+        setReceipts(data);
+      } finally {
+        setLoading(false);
+      }
     };
     fetch();
   }, [currentUser, area, period]);

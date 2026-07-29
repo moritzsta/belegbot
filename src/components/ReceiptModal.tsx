@@ -1,8 +1,10 @@
+"use client";
+
 import { useState, useEffect } from 'react';
-import { X, ExternalLink, Save, Trash2, ArrowLeftRight, AlertCircle } from 'lucide-react';
-import type { Receipt, User, Area } from '../types';
-import { CATEGORIES, formatEuro, formatDate, toInputDate, getCategoryColor } from '../utils/categories';
-import { getReceiptUrl } from '../config/supabase';
+import { X, ExternalLink, Save, Trash2, AlertCircle } from 'lucide-react';
+import type { Receipt, User, Area } from '@/lib/types';
+import { CATEGORIES, formatEuro, formatDate, toInputDate, getCategoryColor } from '@/lib/categories';
+import { getReceiptUrl } from '@/lib/getReceiptUrl';
 
 interface Props {
   receipt?: Receipt;
