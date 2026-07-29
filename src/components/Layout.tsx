@@ -1,7 +1,8 @@
 "use client";
 
 import React from 'react';
-import { LayoutDashboard, List, BarChart3, LogOut } from 'lucide-react';
+import Link from 'next/link';
+import { LayoutDashboard, List, BarChart3, LogOut, Shield } from 'lucide-react';
 import type { User, Area } from '@/lib/types';
 import { capitalize } from '@/lib/categories';
 
@@ -11,6 +12,7 @@ interface LayoutProps {
   currentUser: User;
   area: Area;
   page: NavPage;
+  isAdmin?: boolean;
   onAreaChange: (area: Area) => void;
   onPageChange: (page: NavPage) => void;
   onLogout: () => void;
@@ -18,7 +20,7 @@ interface LayoutProps {
 }
 
 export default function Layout({
-  currentUser, area, page, onAreaChange, onPageChange, onLogout, children
+  currentUser, area, page, isAdmin, onAreaChange, onPageChange, onLogout, children
 }: LayoutProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -162,6 +164,24 @@ export default function Layout({
               <Icon size={18} />
             </button>
           ))}
+
+          {isAdmin && (
+            <Link
+              href="/admin"
+              title="Admin"
+              style={{
+                width: 40, height: 40,
+                borderRadius: 10,
+                marginTop: 'auto',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'transparent',
+                color: 'var(--text-muted)',
+                transition: 'var(--t-base)',
+              }}
+            >
+              <Shield size={18} />
+            </Link>
+          )}
         </nav>
 
         {/* Content */}

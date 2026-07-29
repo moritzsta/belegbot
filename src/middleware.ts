@@ -6,8 +6,8 @@ const SESSION_COOKIES = [
   "better-auth.session_token",
 ];
 
-// /api/ingest hat eigene Secret-Auth (n8n) → an der Session-Middleware vorbei.
-const PUBLIC_PREFIXES = ["/login", "/api/auth", "/api/ingest"];
+// Diese Routen haben eigene Auth (Secret/Telegram-Token) → an der Session-Middleware vorbei.
+const PUBLIC_PREFIXES = ["/login", "/api/auth", "/api/ingest", "/api/telegram"];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));

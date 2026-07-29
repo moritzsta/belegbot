@@ -13,7 +13,7 @@ import Statistics from "./Statistics";
 
 type Page = "dashboard" | "list" | "stats";
 
-export default function AppShell({ currentUser }: { currentUser: User }) {
+export default function AppShell({ currentUser, isAdmin }: { currentUser: User; isAdmin: boolean }) {
   const router = useRouter();
   const [area, setArea] = useState<Area>("private");
   const [page, setPage] = useState<Page>("dashboard");
@@ -37,6 +37,7 @@ export default function AppShell({ currentUser }: { currentUser: User }) {
       currentUser={currentUser}
       area={area}
       page={page}
+      isAdmin={isAdmin}
       onAreaChange={(a) => { setArea(a); setPage("dashboard"); }}
       onPageChange={setPage}
       onLogout={handleLogout}
