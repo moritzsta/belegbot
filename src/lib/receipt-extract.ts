@@ -5,6 +5,7 @@ import { CATEGORIES } from "@/lib/categories";
 
 // Liest ANTHROPIC_API_KEY aus der Umgebung.
 const client = new Anthropic();
+const MODEL = "claude-opus-4-8";
 
 export interface ExtractedReceipt {
   receipt_date: string | null;
@@ -18,9 +19,7 @@ export interface ExtractedReceipt {
   extraction_confidence: "high" | "medium" | "low";
 }
 
-const PROMPT = `Analysiere diesen Kassenbon/Beleg und extrahiere die Informationen. Antworte NUR mit einem gültigen JSON-Objekt, kein Markdown, kein Text davor oder danach.
-
-Gesuchte Felder:
+const FIELDS = `Gesuchte Felder:
 - date: Kaufdatum (Format: YYYY-MM-DD, oder null)
 - merchant: Name des Händlers/Restaurants/Shops (String oder null)
 - total_amount: Gesamtbetrag in Euro als Zahl (ohne €-Zeichen, oder null)
@@ -33,6 +32,17 @@ Gesuchte Felder:
 
 Beispiel-Output:
 {"date":"2024-01-15","merchant":"Rewe","total_amount":42.80,"category":"Lebensmittel","vat_7_amount":1.23,"vat_7_base":17.57,"vat_19_amount":3.45,"vat_19_base":18.16,"confidence":"high"}`;
+
+const IMAGE_PROMPT = `Analysiere diesen Kassenbon/Beleg und extrahiere die Informationen. Antworte NUR mit einem gültigen JSON-Objekt, kein Markdown, kein Text davor oder danach.
+
+${FIELDS}`;
+
+const textPrompt = (text: string) => `Der Nutzer hat einen Beleg / eine Ausgabe in Textform beschrieben. Extrahiere die Informationen so gut wie möglich. Was nicht im Text steht, ist null. Antworte NUR mit einem gültigen JSON-Objekt, kein Markdown, kein Text davor oder danach.
+
+${FIELDS}
+
+Text des Nutzers:
+"""${text}"""`;
 
 const num = (v: unknown): number | null => {
   if (v == null) return null;
@@ -49,15 +59,36 @@ export async function extractReceipt(base64: string, mediaType: string): Promise
     : ({ type: "image", source } as const);
 
   const res = await client.messages.create({
-    model: "claude-opus-4-8",
+    model: MODEL,
     max_tokens: 1024,
-    messages: [{ role: "user", content: [mediaBlock, { type: "text", text: PROMPT }] }],
+    messages: [{ role: "user", content: [mediaBlock, { type: "text", text: IMAGE_PROMPT }] }],
   });
 
-  const textBlock = res.content.find((b) => b.type === "text");
+  return finalize(textOf(res));
+}
+
+/** Extrahiert Beleg-Felder aus einer reinen Textbeschreibung via Claude. */
+export async function extractReceiptFromText(text: string): Promise<ExtractedReceipt> {
+  const res = await client.messages.create({
+    model: MODEL,
+    max_tokens: 1024,
+    messages: [{ role: "user", content: textPrompt(text) }],
+  });
+
+  return finalize(textOf(res));
+}
+
+/** Holt den Text-Block aus einer Claude-Antwort. */
+function textOf(res: Anthropic.Message): string {
+  const block = res.content.find((b) => b.type === "text");
+  return block && "text" in block ? block.text : "{}";
+}
+
+/** Parst die JSON-Antwort von Claude in ein normalisiertes ExtractedReceipt. */
+function finalize(rawJson: string): ExtractedReceipt {
   let parsed: Record<string, unknown> = {};
   try {
-    const raw = (textBlock && "text" in textBlock ? textBlock.text : "{}").replace(/```json|```/g, "").trim();
+    const raw = rawJson.replace(/```json|```/g, "").trim();
     parsed = JSON.parse(raw);
   } catch {
     return emptyExtraction();
