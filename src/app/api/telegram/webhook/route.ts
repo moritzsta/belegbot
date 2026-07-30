@@ -25,29 +25,31 @@ interface TgMessage {
   document?: { file_id: string; mime_type?: string };
 }
 
+// Fuehrende Flags (nur am Anfang der Nachricht):
+//   g → gemeinsam, m → ausgelegt von Moritz, l → ausgelegt von Lena.
+// Ab dem ersten Nicht-Flag ist der Rest die Notiz. So gilt z.B. das "g" in
+// "500 g Mehl" NICHT als "gemeinsam".
 function parseTokens(raw: string, owner: User): { isShared: boolean; paidBy: User; note: string | null } {
   let isShared = false;
   let paidBy: User = owner;
-  const rest: string[] = [];
-  for (const token of raw.trim().split(/\s+/).filter(Boolean)) {
-    const low = token.toLowerCase();
-    if (low === "g:ja") isShared = true;
-    else if (low === "g:nein") isShared = false;
-    else if (low === "p:lena") paidBy = "lena";
-    else if (low === "p:moritz") paidBy = "moritz";
-    else rest.push(token);
+  const words = raw.trim().split(/\s+/).filter(Boolean);
+  let i = 0;
+  for (; i < words.length; i++) {
+    const flag = words[i]!.toLowerCase();
+    if (flag === "g") isShared = true;
+    else if (flag === "m") paidBy = "moritz";
+    else if (flag === "l") paidBy = "lena";
+    else break;
   }
-  return { isShared, paidBy, note: rest.join(" ").trim() || null };
+  return { isShared, paidBy, note: words.slice(i).join(" ").trim() || null };
 }
 
-const CONTROL_TOKENS = new Set(["g:ja", "g:nein", "p:lena", "p:moritz"]);
+const FLAGS = new Set(["g", "m", "l"]);
 
-/** Enthaelt der Text ein Steuer-Token (g:/p:)? Dann ist es sicher ein Beleg. */
+/** Beginnt der Text mit einem Flag (g/m/l)? Dann ist es sicher ein Beleg. */
 function hasControlToken(raw: string): boolean {
-  return raw
-    .trim()
-    .split(/\s+/)
-    .some((t) => CONTROL_TOKENS.has(t.toLowerCase()));
+  const first = raw.trim().split(/\s+/)[0]?.toLowerCase() ?? "";
+  return FLAGS.has(first);
 }
 
 const HELP_TEXT = [
@@ -55,18 +57,17 @@ const HELP_TEXT = [
   "",
   "Schick mir einen Beleg als *Foto*, *PDF* oder als *Text* — ich erkenne Händler, Betrag, Datum & Kategorie automatisch.",
   "",
-  "*Tokens* (optional, in Bildunterschrift oder Text):",
-  "`g:ja` — gemeinsame Ausgabe",
-  "`g:nein` — privat (Standard)",
-  "`p:lena` — ausgelegt von Lena",
-  "`p:moritz` — ausgelegt von Moritz",
+  "*Flags* (optional, ganz am *Anfang* der Nachricht/Bildunterschrift):",
+  "`g` — gemeinsame Ausgabe (sonst privat)",
+  "`m` — ausgelegt von Moritz",
+  "`l` — ausgelegt von Lena",
   "",
-  "Alles andere im Text wird als *Notiz* gespeichert.",
+  "Der Rest der Nachricht wird als *Notiz* gespeichert.",
   "",
   "*Beispiel:*",
-  "`g:ja p:moritz Wocheneinkauf`",
+  "`g m Wocheneinkauf` → gemeinsam, von Moritz, Notiz „Wocheneinkauf“",
   "",
-  "_Reihenfolge und Groß-/Kleinschreibung egal._",
+  "_Flags zählen nur am Anfang — so gilt z.B. das „g“ in „500 g Mehl“ nicht als gemeinsam. Groß-/Kleinschreibung egal._",
 ].join("\n");
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
