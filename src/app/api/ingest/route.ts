@@ -23,7 +23,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const { id, filePath } = await saveReceipt({
+    const { id, filePath, receiptDate, dateIsFallback } = await saveReceipt({
       owner,
       paid_by: body.paid_by === "lena" || body.paid_by === "moritz" ? body.paid_by : owner,
       is_shared: Boolean(body.is_shared),
@@ -41,7 +41,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       extraction_confidence: (body.extraction_confidence as string) ?? null,
       file: (body.file as { data: string; contentType?: string; ext?: string }) ?? null,
     });
-    return NextResponse.json({ ok: true, id, file_path: filePath });
+    return NextResponse.json({
+      ok: true,
+      id,
+      file_path: filePath,
+      receipt_date: receiptDate,
+      date_is_fallback: dateIsFallback,
+    });
   } catch (e) {
     return NextResponse.json(
       { error: "Speichern fehlgeschlagen: " + (e instanceof Error ? e.message : "unbekannt") },

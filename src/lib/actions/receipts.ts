@@ -29,7 +29,11 @@ function toColumns(data: Partial<Receipt>): Partial<ReceiptInsert> {
   if (data.owner !== undefined) c.owner = data.owner;
   if (data.is_shared !== undefined) c.isShared = data.is_shared;
   if (data.paid_by !== undefined) c.paidBy = data.paid_by;
-  if (data.receipt_date !== undefined) c.receiptDate = data.receipt_date;
+  if (data.receipt_date !== undefined) {
+    c.receiptDate = data.receipt_date;
+    // Ein manuell gesetztes/bestaetigtes Datum ist per Definition kein Fallback mehr.
+    c.dateIsFallback = false;
+  }
   if (data.merchant !== undefined) c.merchant = data.merchant;
   if (data.total_amount !== undefined) c.totalAmount = numStr(data.total_amount);
   if (data.category !== undefined) c.category = data.category;

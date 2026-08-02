@@ -138,7 +138,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (!fileId) {
       // Reiner Text-Beleg → Felder aus dem Text extrahieren (falls beschreibender Text da ist)
       const ex = note ? await extractReceiptFromText(note) : null;
-      const { id } = await saveReceipt({
+      const { id, receiptDate, dateIsFallback } = await saveReceipt({
         owner,
         paid_by: paidBy,
         is_shared: isShared,
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       });
       await sendTelegramMessage(
         chatId,
-        confirmation({ owner, paidBy, isShared, note, id, ...(ex ?? {}) }),
+        confirmation({ owner, paidBy, isShared, note, id, ...(ex ?? {}), receipt_date: receiptDate, date_is_fallback: dateIsFallback }),
       );
       return NextResponse.json({ ok: true });
     }
@@ -175,7 +175,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const ex = await extractReceipt(dl.base64, mediaType);
 
     // 7. Speichern (Datei → MinIO + DB)
-    const { id } = await saveReceipt({
+    const { id, receiptDate, dateIsFallback } = await saveReceipt({
       owner,
       paid_by: paidBy,
       is_shared: isShared,
@@ -197,7 +197,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // 8. Bestaetigung
     await sendTelegramMessage(
       chatId,
-      confirmation({ owner, paidBy, isShared, note, id, ...ex }),
+      confirmation({ owner, paidBy, isShared, note, id, ...ex, receipt_date: receiptDate, date_is_fallback: dateIsFallback }),
     );
     return NextResponse.json({ ok: true });
   } catch (e) {
@@ -216,16 +216,20 @@ function confirmation(d: {
   merchant?: string | null;
   total_amount?: number | null;
   receipt_date?: string | null;
+  date_is_fallback?: boolean;
   category?: string;
   extraction_confidence?: string;
 }): string {
+  const dateLine = d.date_is_fallback
+    ? `📅 Datum: ${formatDate(d.receipt_date ?? null)} _(heute — kein Datum erkannt)_`
+    : `📅 Datum: ${formatDate(d.receipt_date ?? null)}`;
   const lines = [
     "✅ *Beleg gespeichert*",
     "",
     `📍 Bereich: ${d.isShared ? "👫 Gemeinsam" : "🔒 Privat"}`,
     `🏪 Händler: ${d.merchant ?? "—"}`,
     `💶 Betrag: ${formatEuro(d.total_amount ?? null)}`,
-    `📅 Datum: ${formatDate(d.receipt_date ?? null)}`,
+    dateLine,
     `🏷 Kategorie: ${d.category ?? "Andere"}`,
     `👤 Ausleger: ${capitalize(d.paidBy)}`,
   ];
