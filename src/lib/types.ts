@@ -13,6 +13,8 @@ export interface Receipt {
 
   // Extracted fields
   receipt_date: string | null;
+  /** true = kein Datum erkannt, Belegdatum wurde serverseitig auf "heute" gesetzt */
+  date_is_fallback: boolean;
   merchant: string | null;
   total_amount: number | null;
   category: string;
