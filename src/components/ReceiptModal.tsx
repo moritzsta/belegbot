@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { X, ExternalLink, Save, Trash2, AlertCircle } from 'lucide-react';
+import { X, ExternalLink, Save, Trash2, AlertCircle, Info } from 'lucide-react';
 import type { Receipt, User, Area } from '@/lib/types';
 import { CATEGORIES, formatEuro, formatDate, toInputDate, getCategoryColor } from '@/lib/categories';
 import { getReceiptUrl } from '@/lib/getReceiptUrl';
@@ -147,7 +147,11 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew
           {!editing && receipt ? (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <InfoField label="Händler" value={receipt.merchant} />
-              <InfoField label="Datum" value={formatDate(receipt.receipt_date)} />
+              <InfoField
+                label="Datum"
+                value={formatDate(receipt.receipt_date)}
+                hint={receipt.date_is_fallback ? 'Automatisch gesetzt — kein Datum erkannt' : undefined}
+              />
               <InfoField label="Betrag" value={formatEuro(receipt.total_amount)} mono />
               <InfoField label="Kategorie" value={receipt.category} accent={catColor} />
               <InfoField label="Bereich" value={receipt.is_shared ? 'Gemeinsam' : 'Privat'} />
@@ -300,9 +304,9 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew
   </>);
 }
 
-function InfoField({ label, value, mono, accent, span }: {
+function InfoField({ label, value, mono, accent, span, hint }: {
   label: string; value: string | null | undefined;
-  mono?: boolean; accent?: string; span?: boolean;
+  mono?: boolean; accent?: string; span?: boolean; hint?: string;
 }) {
   return (
     <div style={{ gridColumn: span ? '1 / -1' : undefined }}>
@@ -317,6 +321,12 @@ function InfoField({ label, value, mono, accent, span }: {
       }}>
         {value ?? '—'}
       </div>
+      {hint && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3, fontSize: '0.72rem', color: 'var(--accent)' }}>
+          <Info size={12} style={{ flexShrink: 0 }} />
+          <span>{hint}</span>
+        </div>
+      )}
     </div>
   );
 }

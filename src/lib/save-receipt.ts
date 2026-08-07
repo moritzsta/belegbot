@@ -10,6 +10,27 @@ const numStr = (v: unknown): string | null => {
   return Number.isFinite(n) ? String(n) : null;
 };
 
+/** Heutiges Datum als YYYY-MM-DD in lokaler Zeit (Server). */
+const todayIso = (): string => {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+};
+
+/**
+ * Normalisiert das Belegdatum: akzeptiert nur ein gueltiges YYYY-MM-DD.
+ * Fehlt es oder ist es ungueltig, wird serverseitig das heutige Datum gesetzt
+ * und `isFallback` = true zurueckgegeben.
+ */
+function resolveReceiptDate(raw: string | null | undefined): { date: string; isFallback: boolean } {
+  if (typeof raw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw.trim())) {
+    const d = new Date(raw.trim());
+    if (!Number.isNaN(d.getTime())) return { date: raw.trim(), isFallback: false };
+  }
+  return { date: todayIso(), isFallback: true };
+}
+
 export interface SaveReceiptInput {
   owner: User;
   paid_by?: User;
@@ -36,7 +57,9 @@ export interface SaveReceiptInput {
  */
 export async function saveReceipt(
   input: SaveReceiptInput,
-): Promise<{ id: string; filePath: string | null }> {
+): Promise<{ id: string; filePath: string | null; receiptDate: string; dateIsFallback: boolean }> {
+  const { date: receiptDate, isFallback: dateIsFallback } = resolveReceiptDate(input.receipt_date);
+
   let filePath: string | null = null;
   if (input.file?.data) {
     const buffer = Buffer.from(input.file.data, "base64");
@@ -51,7 +74,8 @@ export async function saveReceipt(
     owner: input.owner,
     paidBy: input.paid_by ?? input.owner,
     isShared: Boolean(input.is_shared),
-    receiptDate: input.receipt_date || null,
+    receiptDate,
+    dateIsFallback,
     merchant: input.merchant || null,
     totalAmount: numStr(input.total_amount),
     category: input.category || "Andere",
@@ -67,5 +91,5 @@ export async function saveReceipt(
   };
 
   const [row] = await db.insert(receipts).values(values).returning({ id: receipts.id });
-  return { id: row!.id, filePath };
+  return { id: row!.id, filePath, receiptDate, dateIsFallback };
 }

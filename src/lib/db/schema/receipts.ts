@@ -18,6 +18,8 @@ export const receipts = pgTable(
 
     // KI-extrahierte Felder
     receiptDate: date("receipt_date"),
+    // true = kein Datum erkannt, Belegdatum wurde serverseitig auf "heute" gesetzt
+    dateIsFallback: boolean("date_is_fallback").default(false).notNull(),
     merchant: text("merchant"),
     totalAmount: numeric("total_amount", { precision: 10, scale: 2 }),
     category: text("category").default("Andere").notNull(),

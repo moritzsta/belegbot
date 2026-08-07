@@ -13,6 +13,7 @@ export function rowToReceipt(r: ReceiptRow): Receipt {
     is_shared: r.isShared,
     paid_by: r.paidBy as User,
     receipt_date: r.receiptDate,
+    date_is_fallback: r.dateIsFallback,
     merchant: r.merchant,
     total_amount: num(r.totalAmount),
     category: r.category,
