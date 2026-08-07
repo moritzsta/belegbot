@@ -6,6 +6,11 @@ dist/
 .next/
 next-env.d.ts
 /out/
+tsconfig.tsbuildinfo
+
+# TeamPortal One-Time-Setup-Script (self-contained, nicht Teil des Repos)
+teamportal-setup.mjs
+CLAUDE.generated.md
 
 # DB CA-Zertifikat (lokal)
 /certs/
@@ -20,6 +25,7 @@ next-env.d.ts
 # IDE
 .vscode/
 .idea/
+.claude/settings.local.json
 *.suo
 *.ntvs*
 *.njsproj
