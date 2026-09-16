@@ -1,14 +1,29 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { PwaInstaller } from "@/components/PwaInstaller";
 
 export const metadata: Metadata = {
   title: "BelegBot",
   description: "Beleg- und Ausgaben-Erfassung",
+  // PWA: Manifest + Icon-Familie (siehe scripts/generate-pwa-icons.mjs).
+  // iOS liest kein Manifest, sondern apple-touch-icon und appleWebApp direkt.
+  manifest: "/manifest.json",
+  appleWebApp: { capable: true, statusBarStyle: "black", title: "BelegBot" },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // Inhalt bis unter die System-Leisten, Abstand via env(safe-area-inset-*)
+  viewportFit: "cover",
+  themeColor: "#0D0F14",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -24,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <div id="root">{children}</div>
+        <PwaInstaller />
       </body>
     </html>
   );

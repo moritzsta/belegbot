@@ -1,5 +1,5 @@
 import "server-only";
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // S3-Client gegen das self-hosted MinIO auf dem Hetzner-Server.
@@ -53,4 +53,9 @@ export async function getReceiptObject(
     body: (res.Body as ReadableStream) ?? null,
     contentType: res.ContentType,
   };
+}
+
+/** Loescht einen Beleg (z.B. Scan abgebrochen, bevor der Beleg gespeichert wurde). */
+export async function deleteReceiptFile(key: string): Promise<void> {
+  await client().send(new DeleteObjectCommand({ Bucket: RECEIPTS_BUCKET, Key: key }));
 }

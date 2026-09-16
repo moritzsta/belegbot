@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react';
 import { X, ExternalLink, Save, Trash2, AlertCircle, Info } from 'lucide-react';
 import type { Receipt, User, Area } from '@/lib/types';
-import { CATEGORIES, formatEuro, formatDate, toInputDate, getCategoryColor } from '@/lib/categories';
+import { formatEuro, formatDate, toInputDate } from '@/lib/categories';
 import { getReceiptUrl } from '@/lib/getReceiptUrl';
+import { useCategories } from '@/hooks/useCategories';
+import CategorySelect from './CategorySelect';
 
 interface Props {
   receipt?: Receipt;
@@ -13,11 +15,15 @@ interface Props {
   onDelete?: (id: string) => Promise<boolean>;
   isNew?: boolean;
   onCreate?: (data: Partial<Receipt>) => Promise<boolean>;
+  /** TK-0007: Vorbelegung aus dem Scan (inkl. file_path der bereits hochgeladenen Datei). */
+  prefill?: Partial<Receipt>;
   defaultArea?: Area;
   defaultUser?: User;
 }
 
-export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew, onCreate, defaultArea, defaultUser }: Props) {
+export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew, onCreate, prefill, defaultArea, defaultUser }: Props) {
+  // Quelle der Feldwerte: bestehender Beleg, sonst Scan-Vorbelegung, sonst leer.
+  const source = receipt ?? prefill;
   const [editing, setEditing] = useState(!!isNew);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -27,17 +33,17 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew
   const todayStr = new Date().toISOString().split('T')[0];
 
   const [form, setForm] = useState({
-    merchant: receipt?.merchant ?? '',
-    receipt_date: isNew ? todayStr : toInputDate(receipt?.receipt_date),
-    total_amount: receipt?.total_amount?.toString() ?? '',
-    category: receipt?.category ?? 'Sonstiges',
+    merchant: source?.merchant ?? '',
+    receipt_date: source?.receipt_date ? toInputDate(source.receipt_date) : (isNew ? todayStr : ''),
+    total_amount: source?.total_amount?.toString() ?? '',
+    category: source?.category ?? 'Sonstiges',
     paid_by: (receipt?.paid_by ?? defaultUser ?? 'moritz') as User,
     note: receipt?.note ?? '',
     is_shared: receipt?.is_shared ?? (defaultArea === 'shared'),
-    vat_7_base: receipt?.vat_7_base?.toString() ?? '',
-    vat_7_amount: receipt?.vat_7_amount?.toString() ?? '',
-    vat_19_base: receipt?.vat_19_base?.toString() ?? '',
-    vat_19_amount: receipt?.vat_19_amount?.toString() ?? '',
+    vat_7_base: source?.vat_7_base?.toString() ?? '',
+    vat_7_amount: source?.vat_7_amount?.toString() ?? '',
+    vat_19_base: source?.vat_19_base?.toString() ?? '',
+    vat_19_amount: source?.vat_19_amount?.toString() ?? '',
   });
 
   // Close on Escape
@@ -66,6 +72,10 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew
       vat_7_amount: form.vat_7_amount ? parseFloat(form.vat_7_amount) : null,
       vat_19_base: form.vat_19_base ? parseFloat(form.vat_19_base) : null,
       vat_19_amount: form.vat_19_amount ? parseFloat(form.vat_19_amount) : null,
+      // Gescannter Beleg: Datei liegt schon in MinIO, Erkennungsqualitaet mitnehmen.
+      ...(prefill?.file_path
+        ? { file_path: prefill.file_path, extraction_confidence: prefill.extraction_confidence ?? null }
+        : {}),
     };
     let ok: boolean;
     if (isNew && onCreate) {
@@ -88,36 +98,39 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew
     onClose();
   };
 
-  const fileUrl = !isNew ? getReceiptUrl(receipt?.file_path ?? null) : null;
-  const isPdf = receipt?.file_path?.toLowerCase().endsWith('.pdf');
-  const catColor = getCategoryColor(receipt?.category ?? form.category);
+  const filePath = source?.file_path ?? null;
+  const fileUrl = getReceiptUrl(filePath);
+  const isPdf = filePath?.toLowerCase().endsWith('.pdf');
+  const { colorOf } = useCategories();
+  const catColor = colorOf(receipt?.category ?? form.category);
 
   return (<>
     <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal-content">
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div className="modal-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
             <div style={{
               width: 10, height: 10, borderRadius: '50%',
               background: catColor,
               boxShadow: `0 0 6px ${catColor}`,
             }} />
-            <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '1.05rem' }}>
-              {isNew ? 'Neuer Beleg' : editing ? 'Beleg bearbeiten' : (receipt?.merchant ?? 'Beleg Details')}
+            <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '1.05rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {isNew ? (prefill ? 'Gescannter Beleg' : 'Neuer Beleg') : editing ? 'Beleg bearbeiten' : (receipt?.merchant ?? 'Beleg Details')}
             </h2>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
+          <button onClick={onClose} className="touch-target" aria-label="Schliessen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, flexShrink: 0 }}>
             <X size={18} />
           </button>
         </div>
 
-        <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="modal-body">
           {/* File Preview */}
           {fileUrl && (
             <div style={{ borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-input)' }}>
               {isPdf ? (
                 <button onClick={() => setLightboxOpen(true)}
+                  className="touch-target"
                   style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', color: 'var(--accent)', fontSize: '0.875rem', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}>
                   <ExternalLink size={15} /> PDF öffnen
                 </button>
@@ -129,7 +142,7 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew
           )}
 
           {/* Confidence warning */}
-          {!isNew && receipt?.extraction_confidence === 'low' && (
+          {source?.extraction_confidence === 'low' && (
             <div style={{
               display: 'flex', gap: 8, alignItems: 'flex-start',
               padding: '10px 14px',
@@ -145,7 +158,7 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew
 
           {/* Mode: View */}
           {!editing && receipt ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="grid-2">
               <InfoField label="Händler" value={receipt.merchant} />
               <InfoField
                 label="Datum"
@@ -173,7 +186,7 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew
             </div>
           ) : (
             /* Mode: Edit */
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="grid-2">
               <div className="form-group">
                 <label className="form-label">Händler</label>
                 <input value={form.merchant} onChange={e => setForm(f => ({ ...f, merchant: e.target.value }))} />
@@ -184,13 +197,16 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew
               </div>
               <div className="form-group">
                 <label className="form-label">Betrag (€)</label>
-                <input type="number" step="0.01" value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} />
+                <input type="number" inputMode="decimal" step="0.01" value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} />
               </div>
               <div className="form-group">
                 <label className="form-label">Kategorie</label>
-                <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <CategorySelect
+                  value={form.category}
+                  onChange={v => setForm(f => ({ ...f, category: v }))}
+                  allowCreate
+                  aria-label="Kategorie"
+                />
               </div>
               <div className="form-group">
                 <label className="form-label">Bereich</label>
@@ -213,17 +229,17 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew
               {/* VAT */}
               <div className="form-group">
                 <label className="form-label">MwSt 7% Betrag (€)</label>
-                <input type="number" step="0.01" value={form.vat_7_amount} onChange={e => setForm(f => ({ ...f, vat_7_amount: e.target.value }))} placeholder="—" />
+                <input type="number" inputMode="decimal" step="0.01" value={form.vat_7_amount} onChange={e => setForm(f => ({ ...f, vat_7_amount: e.target.value }))} placeholder="—" />
               </div>
               <div className="form-group">
                 <label className="form-label">MwSt 19% Betrag (€)</label>
-                <input type="number" step="0.01" value={form.vat_19_amount} onChange={e => setForm(f => ({ ...f, vat_19_amount: e.target.value }))} placeholder="—" />
+                <input type="number" inputMode="decimal" step="0.01" value={form.vat_19_amount} onChange={e => setForm(f => ({ ...f, vat_19_amount: e.target.value }))} placeholder="—" />
               </div>
             </div>
           )}
 
           {/* Actions */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 4, borderTop: '1px solid var(--border)' }}>
+          <div className="modal-actions">
             {editing ? (
               <>
                 {!isNew ? (
@@ -275,6 +291,8 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew
       >
         <button
           onClick={() => setLightboxOpen(false)}
+          className="touch-target"
+          aria-label="Vollansicht schliessen"
           style={{
             position: 'absolute', top: 16, right: 16,
             background: 'rgba(255,255,255,0.1)', border: 'none',

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   listReceipts,
   listReceiptsSince,
+  listReceiptsInMonth,
   createReceipt as createReceiptAction,
   updateReceipt as updateReceiptAction,
   deleteReceipt as deleteReceiptAction,
@@ -20,6 +21,38 @@ const DEFAULT_FILTERS: ReceiptFilters = {
   paidBy: "",
 };
 
+const errorMessage = (e: unknown, fallback: string): string =>
+  e instanceof Error ? e.message : fallback;
+
+/**
+ * Schreib-Operationen auf Belegen: Action ausfuehren, danach neu laden.
+ * Wird von Belegliste und Monatsuebersicht gemeinsam genutzt.
+ */
+function useReceiptMutations(
+  refetch: () => Promise<void>,
+  setError: (message: string) => void,
+) {
+  const run = async (action: () => Promise<unknown>, fallback: string): Promise<boolean> => {
+    try {
+      await action();
+      await refetch();
+      return true;
+    } catch (e: unknown) {
+      setError(errorMessage(e, fallback));
+      return false;
+    }
+  };
+
+  return {
+    updateReceipt: (id: string, updates: Partial<Receipt>) =>
+      run(() => updateReceiptAction(id, updates), "Update fehlgeschlagen"),
+    deleteReceipt: (id: string) =>
+      run(() => deleteReceiptAction(id), "Löschen fehlgeschlagen"),
+    createReceipt: (data: Partial<Receipt>) =>
+      run(() => createReceiptAction(data), "Erstellen fehlgeschlagen"),
+  };
+}
+
 export function useReceipts(currentUser: User, area: Area) {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +66,7 @@ export function useReceipts(currentUser: User, area: Area) {
       const data = await listReceipts(area, filters);
       setReceipts(data);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unbekannter Fehler");
+      setError(errorMessage(e, "Unbekannter Fehler"));
     } finally {
       setLoading(false);
     }
@@ -43,38 +76,7 @@ export function useReceipts(currentUser: User, area: Area) {
     fetchReceipts();
   }, [fetchReceipts]);
 
-  const updateReceipt = async (id: string, updates: Partial<Receipt>): Promise<boolean> => {
-    try {
-      await updateReceiptAction(id, updates);
-      await fetchReceipts();
-      return true;
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Update fehlgeschlagen");
-      return false;
-    }
-  };
-
-  const deleteReceipt = async (id: string): Promise<boolean> => {
-    try {
-      await deleteReceiptAction(id);
-      await fetchReceipts();
-      return true;
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Löschen fehlgeschlagen");
-      return false;
-    }
-  };
-
-  const createReceipt = async (data: Partial<Receipt>): Promise<boolean> => {
-    try {
-      await createReceiptAction(data);
-      await fetchReceipts();
-      return true;
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erstellen fehlgeschlagen");
-      return false;
-    }
-  };
+  const mutations = useReceiptMutations(fetchReceipts, setError);
 
   const resetFilters = () => setFilters(DEFAULT_FILTERS);
   const activeFilterCount = Object.values(filters).filter((v) => v !== "").length;
@@ -88,10 +90,41 @@ export function useReceipts(currentUser: User, area: Area) {
     resetFilters,
     activeFilterCount,
     refetch: fetchReceipts,
-    updateReceipt,
-    deleteReceipt,
-    createReceipt,
+    ...mutations,
   };
+}
+
+/**
+ * Belege eines Kalendermonats (month = "YYYY-MM") inkl. Gesamtsumme.
+ * Laedt serverseitig nur den gewaehlten Monat — auch weit zurueckliegende
+ * Monate bleiben dadurch gleich schnell.
+ */
+export function useMonthReceipts(area: Area, month: string, category: string, paidBy: string) {
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchReceipts = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await listReceiptsInMonth(area, month, { category, paidBy });
+      setReceipts(data);
+    } catch (e: unknown) {
+      setError(errorMessage(e, "Unbekannter Fehler"));
+    } finally {
+      setLoading(false);
+    }
+  }, [area, month, category, paidBy]);
+
+  useEffect(() => {
+    fetchReceipts();
+  }, [fetchReceipts]);
+
+  const mutations = useReceiptMutations(fetchReceipts, setError);
+  const total = receipts.reduce((sum, r) => sum + (r.total_amount ?? 0), 0);
+
+  return { receipts, total, loading, error, refetch: fetchReceipts, ...mutations };
 }
 
 export function useDashboardStats(currentUser: User, area: Area) {

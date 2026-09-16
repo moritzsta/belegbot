@@ -5,7 +5,8 @@ import { TrendingUp, Receipt, Calendar, Tag, Plus } from 'lucide-react';
 import { useDashboardStats } from '@/hooks/useReceipts';
 import ReceiptModal from './ReceiptModal';
 import type { Receipt as ReceiptType, User, Area } from '@/lib/types';
-import { formatEuro, formatDate, getCategoryColor } from '@/lib/categories';
+import { formatEuro, formatDate } from '@/lib/categories';
+import { useCategories } from '@/hooks/useCategories';
 
 interface Props {
   currentUser: User;
@@ -16,6 +17,7 @@ interface Props {
 
 export default function Dashboard({ currentUser, area, onNavigateToList, onCreate }: Props) {
   const stats = useDashboardStats(currentUser, area);
+  const { colorOf } = useCategories();
   const isShared = area === 'shared';
   const accentColor = isShared ? 'var(--teal)' : 'var(--accent)';
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -23,7 +25,7 @@ export default function Dashboard({ currentUser, area, onNavigateToList, onCreat
   return (
     <div className="animate-fade-in">
       {/* Page Title */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div className="page-header">
         <div>
           <h1 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
             {isShared ? 'Gemeinsame Ausgaben' : 'Meine Ausgaben'}
@@ -32,14 +34,16 @@ export default function Dashboard({ currentUser, area, onNavigateToList, onCreat
             {isShared ? 'Ausgaben von Lena & Moritz' : `Nur deine privaten Belege`}
           </p>
         </div>
-        <button onClick={() => setShowCreateModal(true)} className={`btn btn-sm ${isShared ? 'btn-teal' : 'btn-primary'}`}>
-          <Plus size={14} />
-          Neuer Beleg
-        </button>
+        <div className="page-header-actions">
+          <button onClick={() => setShowCreateModal(true)} className={`btn btn-sm ${isShared ? 'btn-teal' : 'btn-primary'}`}>
+            <Plus size={14} />
+            Neuer Beleg
+          </button>
+        </div>
       </div>
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 24 }}>
+      <div className="stat-grid">
         <StatCard
           label="Diesen Monat"
           value={formatEuro(stats.totalMonth)}
@@ -65,7 +69,7 @@ export default function Dashboard({ currentUser, area, onNavigateToList, onCreat
       </div>
 
       {/* Content grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div className="grid-2">
         {/* Top Categories */}
         <div className="card">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -85,7 +89,7 @@ export default function Dashboard({ currentUser, area, onNavigateToList, onCreat
               {stats.topCategories.map((cat, i) => {
                 const max = stats.topCategories[0]?.total ?? 1;
                 const pct = (cat.total / max) * 100;
-                const color = getCategoryColor(cat.category);
+                const color = colorOf(cat.category);
                 return (
                   <div key={i}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: '0.82rem' }}>
@@ -118,6 +122,7 @@ export default function Dashboard({ currentUser, area, onNavigateToList, onCreat
             </h3>
             <button
               onClick={onNavigateToList}
+              className="touch-target"
               style={{
                 fontSize: '0.78rem', color: accentColor,
                 background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-ui)',

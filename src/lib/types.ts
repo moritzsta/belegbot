@@ -35,6 +35,16 @@ export interface Receipt {
   extraction_confidence: 'high' | 'medium' | 'low' | null;
 }
 
+/** Vom Nutzer verwaltbare Beleg-Kategorie (TK-0005). */
+export interface Category {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string;
+  icon: string | null;
+  position: number;
+}
+
 export interface ReceiptFilters {
   dateFrom: string;
   dateTo: string;

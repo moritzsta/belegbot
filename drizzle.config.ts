@@ -7,7 +7,11 @@ export default defineConfig({
   // Nur belegbot-eigenes Schema migrieren — die Better-Auth-Tabellen
   // (user/session/account/verification) gehoeren dem TeamPortal und werden
   // hier NICHT verwaltet.
-  schema: ["./src/lib/db/schema/receipts.ts", "./src/lib/db/schema/user-config.ts"],
+  schema: [
+    "./src/lib/db/schema/receipts.ts",
+    "./src/lib/db/schema/user-config.ts",
+    "./src/lib/db/schema/categories.ts",
+  ],
   out: "./src/lib/db/migrations",
   dialect: "postgresql",
   dbCredentials: {

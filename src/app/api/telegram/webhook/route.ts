@@ -4,6 +4,7 @@ import type { User } from "@/lib/types";
 import { saveReceipt } from "@/lib/save-receipt";
 import { extractReceipt, extractReceiptFromText } from "@/lib/receipt-extract";
 import { getTelegramOwner } from "@/lib/user-config";
+import { findCategoryByName } from "@/lib/categories-db";
 import {
   verifyTelegramSecret,
   getTelegramFilePath,
@@ -46,6 +47,27 @@ function parseTokens(raw: string, owner: User): { isShared: boolean; paidBy: Use
 
 const FLAGS = new Set(["g", "m", "l"]);
 
+// TK-0005: "Kategorie: Bioladen" in der Notiz -> Kategorie-Wunsch herausloesen.
+// Nur EXISTIERENDE Kategorien werden zugeordnet (case-insensitive); unbekannte
+// Namen bleiben beim erkannten Wert und der Bot verweist auf die App. Kein
+// Rueckfrage-Dialog im Chat — Telegram ist nur noch der Nebenweg.
+const CATEGORY_HINT = /\bkategorie\s*:\s*([^\n;,]+)/i;
+
+function splitCategoryHint(note: string | null): { note: string | null; hint: string | null } {
+  if (!note) return { note, hint: null };
+  const m = note.match(CATEGORY_HINT);
+  if (!m) return { note, hint: null };
+  const rest = note.replace(m[0], "").replace(/\s+/g, " ").trim();
+  return { note: rest || null, hint: m[1]!.trim() };
+}
+
+/** Liefert die zugeordnete Kategorie oder den unbekannten Wunsch fuer die Rueckmeldung. */
+async function resolveCategoryHint(hint: string | null): Promise<{ category: string | null; unknown: string | null }> {
+  if (!hint) return { category: null, unknown: null };
+  const found = await findCategoryByName(hint);
+  return found ? { category: found.name, unknown: null } : { category: null, unknown: hint };
+}
+
 /** Beginnt der Text mit einem Flag (g/m/l)? Dann ist es sicher ein Beleg. */
 function hasControlToken(raw: string): boolean {
   const first = raw.trim().split(/\s+/)[0]?.toLowerCase() ?? "";
@@ -55,7 +77,9 @@ function hasControlToken(raw: string): boolean {
 const HELP_TEXT = [
   "🧾 *BelegBot — so funktioniert's*",
   "",
-  "Schick mir einen Beleg als *Foto*, *PDF* oder als *Text* — ich erkenne Händler, Betrag, Datum & Kategorie automatisch.",
+  "💡 *Am schnellsten geht's in der App:* Beleg direkt mit der Handy-Kamera scannen, prüfen, speichern — https://belege.staebler.dev",
+  "",
+  "Alternativ hier per Telegram: Schick mir einen Beleg als *Foto*, *PDF* oder als *Text* — ich erkenne Händler, Betrag, Datum & Kategorie automatisch.",
   "",
   "*Flags* (optional, ganz am *Anfang* der Nachricht/Bildunterschrift):",
   "`g` — gemeinsame Ausgabe (sonst privat)",
@@ -131,13 +155,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: true });
   }
 
-  // 6. Tokens parsen (g:ja/nein, p:lena/moritz, Rest = Notiz)
-  const { isShared, paidBy, note } = parseTokens(rawText, owner);
+  // 6. Tokens parsen (g:ja/nein, p:lena/moritz, Rest = Notiz) + Kategorie-Wunsch
+  const parsed = parseTokens(rawText, owner);
+  const { isShared, paidBy } = parsed;
+  const { note, hint } = splitCategoryHint(parsed.note);
+  const wanted = await resolveCategoryHint(hint);
 
   try {
     if (!fileId) {
       // Reiner Text-Beleg → Felder aus dem Text extrahieren (falls beschreibender Text da ist)
       const ex = note ? await extractReceiptFromText(note) : null;
+      const category = wanted.category ?? ex?.category;
       const { id, receiptDate, dateIsFallback } = await saveReceipt({
         owner,
         paid_by: paidBy,
@@ -148,7 +176,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         receipt_date: ex?.receipt_date,
         merchant: ex?.merchant,
         total_amount: ex?.total_amount,
-        category: ex?.category,
+        category,
         vat_7_base: ex?.vat_7_base,
         vat_7_amount: ex?.vat_7_amount,
         vat_19_base: ex?.vat_19_base,
@@ -157,7 +185,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       });
       await sendTelegramMessage(
         chatId,
-        confirmation({ owner, paidBy, isShared, note, id, ...(ex ?? {}), receipt_date: receiptDate, date_is_fallback: dateIsFallback }),
+        confirmation({ owner, paidBy, isShared, note, id, ...(ex ?? {}), category, receipt_date: receiptDate, date_is_fallback: dateIsFallback, unknown_category: wanted.unknown }),
       );
       return NextResponse.json({ ok: true });
     }
@@ -171,8 +199,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
     const mediaType = dl.contentType.startsWith("image/") || dl.contentType === "application/pdf" ? dl.contentType : mimeHint;
 
-    // 6. Claude-Extraktion
+    // 6. Claude-Extraktion (Kategorie-Wunsch aus der Bildunterschrift hat Vorrang)
     const ex = await extractReceipt(dl.base64, mediaType);
+    if (wanted.category) ex.category = wanted.category;
 
     // 7. Speichern (Datei → MinIO + DB)
     const { id, receiptDate, dateIsFallback } = await saveReceipt({
@@ -197,7 +226,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // 8. Bestaetigung
     await sendTelegramMessage(
       chatId,
-      confirmation({ owner, paidBy, isShared, note, id, ...ex, receipt_date: receiptDate, date_is_fallback: dateIsFallback }),
+      confirmation({ owner, paidBy, isShared, note, id, ...ex, receipt_date: receiptDate, date_is_fallback: dateIsFallback, unknown_category: wanted.unknown }),
     );
     return NextResponse.json({ ok: true });
   } catch (e) {
@@ -219,6 +248,7 @@ function confirmation(d: {
   date_is_fallback?: boolean;
   category?: string;
   extraction_confidence?: string;
+  unknown_category?: string | null;
 }): string {
   const dateLine = d.date_is_fallback
     ? `📅 Datum: ${formatDate(d.receipt_date ?? null)} _(heute — kein Datum erkannt)_`
@@ -234,6 +264,7 @@ function confirmation(d: {
     `👤 Ausleger: ${capitalize(d.paidBy)}`,
   ];
   if (d.note) lines.push(`📝 Notiz: ${d.note}`);
+  if (d.unknown_category) lines.push(`\n🏷 _Kategorie „${d.unknown_category}“ kenne ich nicht — gespeichert unter „${d.category ?? "Andere"}“. Neue Kategorien legst du in der App unter „Kategorien“ an._`);
   if (d.extraction_confidence === "low") lines.push("\n⚠️ _Niedrige Erkennungsqualität — bitte in der App prüfen._");
   lines.push("\n💡 _Bearbeiten: https://belege.staebler.dev/_");
   return lines.join("\n");
