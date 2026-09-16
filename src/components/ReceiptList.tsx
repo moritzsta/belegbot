@@ -23,7 +23,7 @@ export default function ReceiptList({ currentUser, area }: Props) {
 
   return (
     <div className="animate-fade-in">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div className="page-header">
         <div>
           <h1 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
             {isShared ? 'Gemeinsame Belege' : 'Meine Belege'}
@@ -34,7 +34,7 @@ export default function ReceiptList({ currentUser, area }: Props) {
             </p>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="page-header-actions">
           <button onClick={() => setShowCreateModal(true)} className={`btn btn-sm ${isShared ? 'btn-teal' : 'btn-primary'}`}>
             <Plus size={14} />
             Neuer Beleg

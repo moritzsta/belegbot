@@ -39,15 +39,7 @@ function LoginInner() {
   };
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      background: "var(--bg-base)",
-      padding: 20,
-    }}>
+    <div className="login-page">
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none",
         backgroundImage: "linear-gradient(var(--border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px)",
