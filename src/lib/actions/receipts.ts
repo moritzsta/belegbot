@@ -105,3 +105,38 @@ export async function deleteReceipt(id: string): Promise<boolean> {
   await db.delete(receipts).where(and(eq(receipts.id, id), visibleTo(user)));
   return true;
 }
+
+/** Letzter Tag des Monats (month = "YYYY-MM") als ISO-Datum. */
+function monthEnd(month: string): string {
+  const [y, m] = month.split("-").map(Number) as [number, number];
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return `${month}-${String(last).padStart(2, "0")}`;
+}
+
+/**
+ * Belege eines Kalendermonats (month = "YYYY-MM").
+ * Bereichs-Query auf dem indizierten receipt_date — laedt nur den Monat,
+ * damit auch weit zurueckliegende Monate ohne Performance-Einbussen laden.
+ */
+export async function listReceiptsInMonth(
+  area: Area,
+  month: string,
+  filters?: Pick<ReceiptFilters, "category" | "paidBy">,
+): Promise<Receipt[]> {
+  const { user } = await requireBelegbotUser();
+  const conds: SQL[] = [
+    scopeCondition(area, user),
+    gte(receipts.receiptDate, `${month}-01`),
+    lte(receipts.receiptDate, monthEnd(month)),
+  ];
+  if (filters?.category) conds.push(eq(receipts.category, filters.category));
+  if (filters?.paidBy) conds.push(eq(receipts.paidBy, filters.paidBy));
+
+  const rows = await db
+    .select()
+    .from(receipts)
+    .where(and(...conds))
+    .orderBy(desc(receipts.receiptDate), desc(receipts.createdAt));
+
+  return rows.map(rowToReceipt);
+}
