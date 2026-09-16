@@ -19,29 +19,8 @@ export default function ReceiptRow({ receipt: r, accentColor, isShared, animDela
   return (
     <div
       onClick={onClick}
-      style={{
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--r-md)',
-        padding: '12px 16px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 14,
-        cursor: 'pointer',
-        transition: 'var(--t-base)',
-        animationDelay: `${animDelay}ms`,
-      }}
-      className="animate-fade-in"
-      onMouseEnter={e => {
-        (e.currentTarget as HTMLElement).style.background = 'var(--bg-card-hover)';
-        (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-active)';
-        (e.currentTarget as HTMLElement).style.transform = 'translateX(2px)';
-      }}
-      onMouseLeave={e => {
-        (e.currentTarget as HTMLElement).style.background = 'var(--bg-card)';
-        (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)';
-        (e.currentTarget as HTMLElement).style.transform = 'translateX(0)';
-      }}
+      className="receipt-row animate-fade-in"
+      style={{ animationDelay: `${animDelay}ms` }}
     >
       {/* Category dot */}
       <div style={{
@@ -60,12 +39,12 @@ export default function ReceiptRow({ receipt: r, accentColor, isShared, animDela
             <span className="badge badge-amber" style={{ fontSize: '0.68rem' }}>unsicher</span>
           )}
         </div>
-        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2, display: 'flex', gap: 10 }}>
+        <div className="receipt-row-meta">
           <span>{formatDate(r.receipt_date)}</span>
           <span>·</span>
           <span>{r.category}</span>
           {isShared && <><span>·</span><span style={{ color: 'var(--text-secondary)' }}>{capitalize(r.paid_by)}</span></>}
-          {r.note && <><span>·</span><span style={{ fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 150 }}>{r.note}</span></>}
+          {r.note && <><span>·</span><span className="receipt-row-note">{r.note}</span></>}
         </div>
       </div>
 

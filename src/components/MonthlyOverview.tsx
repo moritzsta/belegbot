@@ -50,7 +50,7 @@ export default function MonthlyOverview({ area }: Props) {
   return (
     <div className="animate-fade-in">
       {/* Header: Titel + Gesamtsumme des Monats */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, gap: 16 }}>
+      <div className="page-header">
         <div>
           <h1 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
             {monthLabel(month)}
@@ -67,12 +67,13 @@ export default function MonthlyOverview({ area }: Props) {
         </div>
 
         {/* Monatsnavigation */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="page-header-actions">
           <button
             onClick={() => setMonth(shiftMonth(month, -1))}
             className="btn btn-ghost btn-sm"
             title="Vorheriger Monat"
-            style={{ padding: '5px 8px' }}
+            aria-label="Vorheriger Monat"
+            style={{ padding: '5px 8px', flex: '0 0 auto' }}
           >
             <ChevronLeft size={15} />
           </button>
@@ -81,34 +82,37 @@ export default function MonthlyOverview({ area }: Props) {
             value={month}
             max={currentMonth()}
             onChange={e => { if (e.target.value) setMonth(e.target.value); }}
-            style={{ height: 34, width: 160, fontSize: '0.85rem' }}
+            className="month-input input-sm"
+            aria-label="Monat waehlen"
           />
           <button
             onClick={() => setMonth(shiftMonth(month, 1))}
             className="btn btn-ghost btn-sm"
             title="Naechster Monat"
+            aria-label="Naechster Monat"
             disabled={isCurrentMonth}
-            style={{ padding: '5px 8px' }}
+            style={{ padding: '5px 8px', flex: '0 0 auto' }}
           >
             <ChevronRight size={15} />
           </button>
           {!isCurrentMonth && (
-            <button onClick={() => setMonth(currentMonth())} className="btn btn-ghost btn-sm" style={{ height: 34 }}>
+            <button onClick={() => setMonth(currentMonth())} className="btn btn-ghost btn-sm" style={{ flex: '0 0 auto' }}>
               Heute
             </button>
           )}
-          <button onClick={refetch} className="btn btn-ghost btn-sm" disabled={loading} style={{ padding: '5px 8px' }}>
+          <button onClick={refetch} className="btn btn-ghost btn-sm" aria-label="Aktualisieren" disabled={loading} style={{ padding: '5px 8px', flex: '0 0 auto' }}>
             <RefreshCw size={14} style={{ animation: loading ? 'spin 0.6s linear infinite' : 'none' }} />
           </button>
         </div>
       </div>
 
       {/* Filter innerhalb des Monats */}
-      <div className="card" style={{ padding: '14px 16px', marginBottom: 16, display: 'flex', gap: 10, alignItems: 'center' }}>
+      <div className="card filter-row" style={{ padding: '14px 16px', marginBottom: 16 }}>
         <select
           value={category}
           onChange={e => setCategory(e.target.value)}
-          style={{ width: 200, height: 36, fontSize: '0.875rem' }}
+          className="filter-select input-sm"
+          aria-label="Kategorie filtern"
         >
           <option value="">Alle Kategorien</option>
           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -118,7 +122,8 @@ export default function MonthlyOverview({ area }: Props) {
           <select
             value={paidBy}
             onChange={e => setPaidBy(e.target.value)}
-            style={{ width: 160, height: 36, fontSize: '0.875rem' }}
+            className="filter-select input-sm"
+            aria-label="Ausleger filtern"
           >
             <option value="">Alle Ausleger</option>
             <option value="lena">Lena</option>
@@ -127,7 +132,7 @@ export default function MonthlyOverview({ area }: Props) {
         )}
 
         {hasFilters && (
-          <button onClick={resetFilters} className="btn btn-ghost btn-sm" style={{ height: 36 }}>
+          <button onClick={resetFilters} className="btn btn-ghost btn-sm">
             Filter zurücksetzen
           </button>
         )}

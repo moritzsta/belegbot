@@ -15,10 +15,11 @@ interface Props {
 
 export default function AdminPanel({ initialConfig }: Props) {
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-base)", padding: "40px 20px" }}>
+    <div className="admin-page">
       <div style={{ maxWidth: 620, margin: "0 auto" }}>
         <Link
           href="/"
+          className="touch-target"
           style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--text-secondary)", fontSize: "0.85rem", marginBottom: 24, textDecoration: "none" }}
         >
           <ArrowLeft size={15} /> Zurück zur App
@@ -68,7 +69,7 @@ function IdRow({ owner, initial }: { owner: User; initial: number | null }) {
   };
 
   return (
-    <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
+    <div className="admin-row">
       <div className="form-group" style={{ flex: 1 }}>
         <label className="form-label">{capitalize(owner)} — Telegram-User-ID</label>
         <input
