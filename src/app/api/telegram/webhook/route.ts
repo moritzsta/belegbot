@@ -55,7 +55,9 @@ function hasControlToken(raw: string): boolean {
 const HELP_TEXT = [
   "🧾 *BelegBot — so funktioniert's*",
   "",
-  "Schick mir einen Beleg als *Foto*, *PDF* oder als *Text* — ich erkenne Händler, Betrag, Datum & Kategorie automatisch.",
+  "💡 *Am schnellsten geht's in der App:* Beleg direkt mit der Handy-Kamera scannen, prüfen, speichern — https://belege.staebler.dev",
+  "",
+  "Alternativ hier per Telegram: Schick mir einen Beleg als *Foto*, *PDF* oder als *Text* — ich erkenne Händler, Betrag, Datum & Kategorie automatisch.",
   "",
   "*Flags* (optional, ganz am *Anfang* der Nachricht/Bildunterschrift):",
   "`g` — gemeinsame Ausgabe (sonst privat)",

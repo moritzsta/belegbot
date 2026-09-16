@@ -375,7 +375,35 @@ select option { background: var(--bg-card); }
 .app-main {
   flex: 1;
   min-width: 0;
-  padding: 24px 0 24px 16px;
+  /* unten Platz fuer den schwebenden Scan-Button */
+  padding: 24px 0 96px 16px;
+}
+
+/* ─── Scan-Button (TK-0007) — schwebt ueber allen Seiten ─── */
+.scan-fab {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.scan-fab .btn {
+  border-radius: 100px;
+  box-shadow: var(--shadow-md);
+}
+.scan-fab-primary {
+  padding: 12px 22px;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.scan-fab-secondary {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  justify-content: center;
+  background: var(--bg-card);
 }
 
 /* Icon-Rail links (Desktop) — wird auf Mobile zur Bottom-Tab-Bar */
@@ -605,8 +633,14 @@ select option { background: var(--bg-card); }
   /* Rail wird Bottom-Tab-Bar */
   .app-body { padding: 0 14px; }
   .app-main {
-    padding: 16px 0 calc(78px + env(safe-area-inset-bottom)) 0;
+    /* Tab-Leiste + Scan-Button muessen unter den Inhalt passen */
+    padding: 16px 0 calc(140px + env(safe-area-inset-bottom)) 0;
   }
+  .scan-fab {
+    right: 14px;
+    bottom: calc(86px + env(safe-area-inset-bottom));
+  }
+  .scan-fab-primary { padding: 12px 18px; }
   .app-nav {
     position: fixed;
     inset: auto 0 0 0;
