@@ -13,11 +13,15 @@ interface Props {
   onDelete?: (id: string) => Promise<boolean>;
   isNew?: boolean;
   onCreate?: (data: Partial<Receipt>) => Promise<boolean>;
+  /** TK-0007: Vorbelegung aus dem Scan (inkl. file_path der bereits hochgeladenen Datei). */
+  prefill?: Partial<Receipt>;
   defaultArea?: Area;
   defaultUser?: User;
 }
 
-export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew, onCreate, defaultArea, defaultUser }: Props) {
+export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew, onCreate, prefill, defaultArea, defaultUser }: Props) {
+  // Quelle der Feldwerte: bestehender Beleg, sonst Scan-Vorbelegung, sonst leer.
+  const source = receipt ?? prefill;
   const [editing, setEditing] = useState(!!isNew);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -27,17 +31,17 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew
   const todayStr = new Date().toISOString().split('T')[0];
 
   const [form, setForm] = useState({
-    merchant: receipt?.merchant ?? '',
-    receipt_date: isNew ? todayStr : toInputDate(receipt?.receipt_date),
-    total_amount: receipt?.total_amount?.toString() ?? '',
-    category: receipt?.category ?? 'Sonstiges',
+    merchant: source?.merchant ?? '',
+    receipt_date: source?.receipt_date ? toInputDate(source.receipt_date) : (isNew ? todayStr : ''),
+    total_amount: source?.total_amount?.toString() ?? '',
+    category: source?.category ?? 'Sonstiges',
     paid_by: (receipt?.paid_by ?? defaultUser ?? 'moritz') as User,
     note: receipt?.note ?? '',
     is_shared: receipt?.is_shared ?? (defaultArea === 'shared'),
-    vat_7_base: receipt?.vat_7_base?.toString() ?? '',
-    vat_7_amount: receipt?.vat_7_amount?.toString() ?? '',
-    vat_19_base: receipt?.vat_19_base?.toString() ?? '',
-    vat_19_amount: receipt?.vat_19_amount?.toString() ?? '',
+    vat_7_base: source?.vat_7_base?.toString() ?? '',
+    vat_7_amount: source?.vat_7_amount?.toString() ?? '',
+    vat_19_base: source?.vat_19_base?.toString() ?? '',
+    vat_19_amount: source?.vat_19_amount?.toString() ?? '',
   });
 
   // Close on Escape
@@ -66,6 +70,10 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew
       vat_7_amount: form.vat_7_amount ? parseFloat(form.vat_7_amount) : null,
       vat_19_base: form.vat_19_base ? parseFloat(form.vat_19_base) : null,
       vat_19_amount: form.vat_19_amount ? parseFloat(form.vat_19_amount) : null,
+      // Gescannter Beleg: Datei liegt schon in MinIO, Erkennungsqualitaet mitnehmen.
+      ...(prefill?.file_path
+        ? { file_path: prefill.file_path, extraction_confidence: prefill.extraction_confidence ?? null }
+        : {}),
     };
     let ok: boolean;
     if (isNew && onCreate) {
@@ -88,8 +96,9 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew
     onClose();
   };
 
-  const fileUrl = !isNew ? getReceiptUrl(receipt?.file_path ?? null) : null;
-  const isPdf = receipt?.file_path?.toLowerCase().endsWith('.pdf');
+  const filePath = source?.file_path ?? null;
+  const fileUrl = getReceiptUrl(filePath);
+  const isPdf = filePath?.toLowerCase().endsWith('.pdf');
   const catColor = getCategoryColor(receipt?.category ?? form.category);
 
   return (<>
@@ -104,7 +113,7 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew
               boxShadow: `0 0 6px ${catColor}`,
             }} />
             <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '1.05rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {isNew ? 'Neuer Beleg' : editing ? 'Beleg bearbeiten' : (receipt?.merchant ?? 'Beleg Details')}
+              {isNew ? (prefill ? 'Gescannter Beleg' : 'Neuer Beleg') : editing ? 'Beleg bearbeiten' : (receipt?.merchant ?? 'Beleg Details')}
             </h2>
           </div>
           <button onClick={onClose} className="touch-target" aria-label="Schliessen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, flexShrink: 0 }}>
@@ -130,7 +139,7 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew
           )}
 
           {/* Confidence warning */}
-          {!isNew && receipt?.extraction_confidence === 'low' && (
+          {source?.extraction_confidence === 'low' && (
             <div style={{
               display: 'flex', gap: 8, alignItems: 'flex-start',
               padding: '10px 14px',
