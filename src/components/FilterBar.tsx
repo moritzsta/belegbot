@@ -24,15 +24,16 @@ export default function FilterBar({ filters, onChange, onReset, activeCount, are
   return (
     <div className="card" style={{ padding: '14px 16px', marginBottom: 16 }}>
       {/* Main row */}
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+      <div className="filter-row">
         {/* Merchant search */}
-        <div style={{ flex: 1, position: 'relative' }}>
+        <div className="filter-search">
           <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
           <input
             placeholder="Händler suchen…"
             value={filters.merchant}
             onChange={e => set('merchant', e.target.value)}
-            style={{ paddingLeft: 32, fontSize: '0.875rem', height: 36 }}
+            className="input-sm"
+            style={{ paddingLeft: 32 }}
           />
         </div>
 
@@ -40,7 +41,7 @@ export default function FilterBar({ filters, onChange, onReset, activeCount, are
         <select
           value={filters.category}
           onChange={e => set('category', e.target.value)}
-          style={{ width: 180, height: 36, fontSize: '0.875rem' }}
+          className="filter-select input-sm"
         >
           <option value="">Alle Kategorien</option>
           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -50,6 +51,7 @@ export default function FilterBar({ filters, onChange, onReset, activeCount, are
         <button
           onClick={() => setExpanded(!expanded)}
           className="btn btn-ghost btn-sm"
+          aria-label="Weitere Filter"
           style={{
             height: 36,
             borderColor: activeCount > 0 ? accentColor : undefined,
@@ -73,7 +75,7 @@ export default function FilterBar({ filters, onChange, onReset, activeCount, are
 
         {/* Reset */}
         {activeCount > 0 && (
-          <button onClick={onReset} className="btn btn-ghost btn-sm" style={{ height: 36, padding: '5px 8px' }}>
+          <button onClick={onReset} className="btn btn-ghost btn-sm" aria-label="Filter zuruecksetzen" style={{ height: 36, padding: '5px 8px' }}>
             <X size={14} />
           </button>
         )}
@@ -84,24 +86,24 @@ export default function FilterBar({ filters, onChange, onReset, activeCount, are
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
           <div className="form-group">
             <label className="form-label">Von</label>
-            <input type="date" value={filters.dateFrom} onChange={e => set('dateFrom', e.target.value)} style={{ height: 34 }} />
+            <input type="date" value={filters.dateFrom} onChange={e => set('dateFrom', e.target.value)} className="input-sm" />
           </div>
           <div className="form-group">
             <label className="form-label">Bis</label>
-            <input type="date" value={filters.dateTo} onChange={e => set('dateTo', e.target.value)} style={{ height: 34 }} />
+            <input type="date" value={filters.dateTo} onChange={e => set('dateTo', e.target.value)} className="input-sm" />
           </div>
           <div className="form-group">
             <label className="form-label">Betrag ab (€)</label>
-            <input type="number" placeholder="0,00" value={filters.amountMin} onChange={e => set('amountMin', e.target.value)} style={{ height: 34 }} />
+            <input type="number" inputMode="decimal" placeholder="0,00" value={filters.amountMin} onChange={e => set('amountMin', e.target.value)} className="input-sm" />
           </div>
           <div className="form-group">
             <label className="form-label">Betrag bis (€)</label>
-            <input type="number" placeholder="999,00" value={filters.amountMax} onChange={e => set('amountMax', e.target.value)} style={{ height: 34 }} />
+            <input type="number" inputMode="decimal" placeholder="999,00" value={filters.amountMax} onChange={e => set('amountMax', e.target.value)} className="input-sm" />
           </div>
           {area === 'shared' && (
             <div className="form-group">
               <label className="form-label">Ausleger</label>
-              <select value={filters.paidBy} onChange={e => set('paidBy', e.target.value)} style={{ height: 34 }}>
+              <select value={filters.paidBy} onChange={e => set('paidBy', e.target.value)} className="input-sm">
                 <option value="">Alle</option>
                 <option value="lena">Lena</option>
                 <option value="moritz">Moritz</option>

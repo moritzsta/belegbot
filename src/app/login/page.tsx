@@ -40,15 +40,7 @@ function LoginInner() {
   };
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      background: "var(--bg-base)",
-      padding: 20,
-    }}>
+    <div className="login-page">
       {/* Oeffentlich erreichbar, damit die Installation vor dem Login moeglich ist. */}
       <InstallButton style={{ position: "fixed", top: 14, right: 14, zIndex: 1 }} />
       <div style={{

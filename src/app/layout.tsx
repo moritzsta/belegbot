@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  // Inhalt bis unter die System-Leisten, Abstand via env(safe-area-inset-bottom)
+  // Inhalt bis unter die System-Leisten, Abstand via env(safe-area-inset-*)
   viewportFit: "cover",
   themeColor: "#0D0F14",
 };
