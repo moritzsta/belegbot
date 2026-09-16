@@ -37,5 +37,10 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|favicon.svg).*)"],
+  // PWA-Assets MUESSEN oeffentlich sein: Chrome/Edge/Firefox fetchen Manifest,
+  // Service Worker und Icons OHNE Cookies. Landen die auf /login (307), gilt die
+  // App als nicht installierbar und der Browser bietet nur eine Verknuepfung an.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|favicon.svg|manifest\\.json|sw\\.js|icons/|apple-touch-icon.*|brand/).*)",
+  ],
 };
