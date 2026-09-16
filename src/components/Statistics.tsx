@@ -90,7 +90,7 @@ export default function Statistics({ currentUser, area }: Props) {
   return (
     <div className="animate-fade-in">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div className="page-header">
         <div>
           <h1 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
             Statistiken
@@ -103,20 +103,13 @@ export default function Statistics({ currentUser, area }: Props) {
           )}
         </div>
         {/* Period selector */}
-        <div style={{ display: 'flex', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 3, gap: 2 }}>
+        <div className="segmented">
           {([['month', 'Monat'], ['quarter', 'Quartal'], ['year', 'Jahr']] as [Period, string][]).map(([p, label]) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              style={{
-                padding: '4px 12px',
-                borderRadius: 7,
-                border: 'none', cursor: 'pointer', fontFamily: 'var(--font-ui)',
-                fontSize: '0.8rem', fontWeight: 500,
-                background: period === p ? accentColor : 'transparent',
-                color: period === p ? '#0D0F14' : 'var(--text-secondary)',
-                transition: 'var(--t-base)',
-              }}
+              className="segmented-item"
+              style={period === p ? { background: accentColor, color: '#0D0F14' } : undefined}
             >
               {label}
             </button>
@@ -148,13 +141,13 @@ export default function Statistics({ currentUser, area }: Props) {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: isShared ? '1fr 1fr 1fr' : '1fr 1fr', gap: 16 }}>
+          <div className={`stats-grid${isShared ? ' is-shared' : ''}`}>
             {/* Pie chart */}
-            <div className="card" style={{ gridColumn: isShared ? '1 / 3' : '1' }}>
+            <div className={`card${isShared ? ' stats-col-2' : ''}`}>
               <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: '0.95rem', marginBottom: 16 }}>
                 Nach Kategorie
               </h3>
-              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+              <div className="pie-row">
                 <ResponsiveContainer width={160} height={160}>
                   <PieChart>
                     <Pie data={catData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2} dataKey="value">
@@ -212,7 +205,7 @@ export default function Statistics({ currentUser, area }: Props) {
             )}
 
             {/* Bar chart by merchant */}
-            <div className="card" style={{ gridColumn: '1 / -1' }}>
+            <div className="card stats-col-full">
               <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: '0.95rem', marginBottom: 16 }}>
                 Top Händler
               </h3>
