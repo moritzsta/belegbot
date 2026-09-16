@@ -2,11 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { LayoutDashboard, List, BarChart3, LogOut, Shield } from 'lucide-react';
+import { LayoutDashboard, List, CalendarDays, BarChart3, LogOut, Shield } from 'lucide-react';
 import type { User, Area } from '@/lib/types';
 import { capitalize } from '@/lib/categories';
 
-type NavPage = 'dashboard' | 'list' | 'stats';
+type NavPage = 'dashboard' | 'list' | 'month' | 'stats';
 
 interface LayoutProps {
   currentUser: User;
@@ -142,6 +142,7 @@ export default function Layout({
           {([
             { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
             { id: 'list', icon: List, label: 'Belege' },
+            { id: 'month', icon: CalendarDays, label: 'Monat' },
             { id: 'stats', icon: BarChart3, label: 'Statistiken' },
           ] as { id: NavPage; icon: React.ElementType; label: string }[]).map(({ id, icon: Icon, label }) => (
             <button

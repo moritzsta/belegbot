@@ -9,9 +9,10 @@ import type { User, Area, Receipt } from "@/lib/types";
 import Layout from "./Layout";
 import Dashboard from "./Dashboard";
 import ReceiptList from "./ReceiptList";
+import MonthlyOverview from "./MonthlyOverview";
 import Statistics from "./Statistics";
 
-type Page = "dashboard" | "list" | "stats";
+type Page = "dashboard" | "list" | "month" | "stats";
 
 export default function AppShell({ currentUser, isAdmin }: { currentUser: User; isAdmin: boolean }) {
   const router = useRouter();
@@ -51,6 +52,7 @@ export default function AppShell({ currentUser, isAdmin }: { currentUser: User; 
         />
       )}
       {page === "list" && <ReceiptList currentUser={currentUser} area={area} />}
+      {page === "month" && <MonthlyOverview area={area} />}
       {page === "stats" && <Statistics currentUser={currentUser} area={area} />}
     </Layout>
   );
