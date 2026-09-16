@@ -31,6 +31,23 @@ function resolveReceiptDate(raw: string | null | undefined): { date: string; isF
   return { date: todayIso(), isFallback: true };
 }
 
+/**
+ * Legt eine Beleg-Datei unter `<owner>/<zeitstempel>.<ext>` in MinIO ab und
+ * liefert den Key. Wird von saveReceipt() und der Scan-Route genutzt.
+ */
+export async function storeReceiptFile(
+  owner: User,
+  buffer: Buffer | Uint8Array,
+  contentType?: string,
+  ext?: string,
+): Promise<string> {
+  const safeExt = (ext ?? "jpg").replace(/[^a-z0-9]/gi, "").toLowerCase() || "jpg";
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const key = `${owner}/${stamp}.${safeExt}`;
+  await uploadReceiptFile(key, buffer, contentType ?? "application/octet-stream");
+  return key;
+}
+
 export interface SaveReceiptInput {
   owner: User;
   paid_by?: User;
@@ -60,15 +77,9 @@ export async function saveReceipt(
 ): Promise<{ id: string; filePath: string | null; receiptDate: string; dateIsFallback: boolean }> {
   const { date: receiptDate, isFallback: dateIsFallback } = resolveReceiptDate(input.receipt_date);
 
-  let filePath: string | null = null;
-  if (input.file?.data) {
-    const buffer = Buffer.from(input.file.data, "base64");
-    const ext = (input.file.ext ?? "jpg").replace(/[^a-z0-9]/gi, "").toLowerCase() || "jpg";
-    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const key = `${input.owner}/${stamp}.${ext}`;
-    await uploadReceiptFile(key, buffer, input.file.contentType ?? "application/octet-stream");
-    filePath = key;
-  }
+  const filePath = input.file?.data
+    ? await storeReceiptFile(input.owner, Buffer.from(input.file.data, "base64"), input.file.contentType, input.file.ext)
+    : null;
 
   const values: ReceiptInsert = {
     owner: input.owner,
