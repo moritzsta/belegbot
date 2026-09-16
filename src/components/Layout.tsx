@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { LayoutDashboard, List, CalendarDays, BarChart3, LogOut, Shield } from 'lucide-react';
 import type { User, Area } from '@/lib/types';
 import { capitalize } from '@/lib/categories';
+import { InstallButton } from './PwaInstaller';
 
 type NavPage = 'dashboard' | 'list' | 'month' | 'stats';
 
@@ -90,6 +91,7 @@ export default function Layout({
               </div>
               <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{capitalize(currentUser)}</span>
             </div>
+            <InstallButton />
             <button
               onClick={onLogout}
               className="btn btn-ghost btn-sm"

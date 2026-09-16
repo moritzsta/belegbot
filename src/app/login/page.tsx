@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { InstallButton } from "@/components/PwaInstaller";
 
 export default function LoginPage() {
   return (
@@ -40,6 +41,8 @@ function LoginInner() {
 
   return (
     <div className="login-page">
+      {/* Oeffentlich erreichbar, damit die Installation vor dem Login moeglich ist. */}
+      <InstallButton style={{ position: "fixed", top: 14, right: 14, zIndex: 1 }} />
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none",
         backgroundImage: "linear-gradient(var(--border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px)",
