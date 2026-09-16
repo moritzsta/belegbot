@@ -2,8 +2,8 @@
 
 import { Search, X, SlidersHorizontal } from 'lucide-react';
 import type { ReceiptFilters, Area } from '@/lib/types';
-import { CATEGORIES } from '@/lib/categories';
 import { useState } from 'react';
+import CategorySelect from './CategorySelect';
 
 interface Props {
   filters: ReceiptFilters;
@@ -38,14 +38,13 @@ export default function FilterBar({ filters, onChange, onReset, activeCount, are
         </div>
 
         {/* Category */}
-        <select
+        <CategorySelect
           value={filters.category}
-          onChange={e => set('category', e.target.value)}
+          onChange={v => set('category', v)}
+          emptyLabel="Alle Kategorien"
           className="filter-select input-sm"
-        >
-          <option value="">Alle Kategorien</option>
-          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
+          aria-label="Kategorie filtern"
+        />
 
         {/* More filters toggle */}
         <button

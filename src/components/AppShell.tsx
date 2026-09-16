@@ -7,6 +7,7 @@ import { AlertCircle } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { createReceipt as createReceiptAction } from "@/lib/actions/receipts";
 import { useReceiptScan } from "@/hooks/useReceiptScan";
+import { CategoriesProvider } from "@/hooks/useCategories";
 import type { ScanResult } from "@/lib/receipt-scan-client";
 import type { User, Area, Receipt } from "@/lib/types";
 import Layout from "./Layout";
@@ -16,8 +17,9 @@ import MonthlyOverview from "./MonthlyOverview";
 import Statistics from "./Statistics";
 import ReceiptModal from "./ReceiptModal";
 import ScanButton from "./ScanButton";
+import CategoriesPage from "./CategoriesPage";
 
-type Page = "dashboard" | "list" | "month" | "stats";
+type Page = "dashboard" | "list" | "month" | "stats" | "categories";
 
 /** Scan-Ergebnis -> Vorbelegung fuer den Beleg-Dialog (Felder heissen gleich). */
 const toPrefill = (r: ScanResult): Partial<Receipt> => ({ ...r.extraction, file_path: r.file_path });
@@ -55,61 +57,64 @@ export default function AppShell({ currentUser, isAdmin }: { currentUser: User; 
   const pageKey = `${page}-${refreshKey}`;
 
   return (
-    <Layout
-      currentUser={currentUser}
-      area={area}
-      page={page}
-      isAdmin={isAdmin}
-      onAreaChange={(a) => { setArea(a); setPage("dashboard"); }}
-      onPageChange={setPage}
-      onLogout={handleLogout}
-    >
-      {page === "dashboard" && (
-        <Dashboard
-          key={pageKey}
-          currentUser={currentUser}
-          area={area}
-          onNavigateToList={() => setPage("list")}
-          onCreate={createReceipt}
-        />
-      )}
-      {page === "list" && <ReceiptList key={pageKey} currentUser={currentUser} area={area} />}
-      {page === "month" && <MonthlyOverview key={pageKey} area={area} />}
-      {page === "stats" && <Statistics key={pageKey} currentUser={currentUser} area={area} />}
+    <CategoriesProvider>
+      <Layout
+        currentUser={currentUser}
+        area={area}
+        page={page}
+        isAdmin={isAdmin}
+        onAreaChange={(a) => { setArea(a); setPage("dashboard"); }}
+        onPageChange={setPage}
+        onLogout={handleLogout}
+      >
+        {page === "dashboard" && (
+          <Dashboard
+            key={pageKey}
+            currentUser={currentUser}
+            area={area}
+            onNavigateToList={() => setPage("list")}
+            onCreate={createReceipt}
+          />
+        )}
+        {page === "list" && <ReceiptList key={pageKey} currentUser={currentUser} area={area} />}
+        {page === "month" && <MonthlyOverview key={pageKey} area={area} />}
+        {page === "stats" && <Statistics key={pageKey} currentUser={currentUser} area={area} />}
+        {page === "categories" && <CategoriesPage key={pageKey} />}
 
-      {/* TK-0007: Beleg per Kamera/Datei erfassen */}
-      <ScanButton area={area} disabled={scan.state.status === "scanning"} onFile={scan.start} />
+        {/* TK-0007: Beleg per Kamera/Datei erfassen */}
+        <ScanButton area={area} disabled={scan.state.status === "scanning"} onFile={scan.start} />
 
-      {scan.state.status === "scanning" && (
-        <div className="modal-backdrop" style={{ alignItems: "center" }}>
-          <div className="loading-center" style={{ color: "var(--text-primary)" }}>
-            <span className="loading-spinner" /> Beleg wird gelesen…
-          </div>
-        </div>
-      )}
-
-      {scan.state.status === "error" && (
-        <div className="modal-backdrop" style={{ alignItems: "center" }} onClick={scan.dismiss}>
-          <div className="card" style={{ maxWidth: 380, display: "flex", flexDirection: "column", gap: 14 }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: "flex", gap: 10, alignItems: "flex-start", color: "var(--red)", fontSize: "0.9rem" }}>
-              <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
-              <span>{scan.state.message}</span>
+        {scan.state.status === "scanning" && (
+          <div className="modal-backdrop" style={{ alignItems: "center" }}>
+            <div className="loading-center" style={{ color: "var(--text-primary)" }}>
+              <span className="loading-spinner" /> Beleg wird gelesen…
             </div>
-            <button onClick={scan.dismiss} className="btn btn-ghost">Schließen</button>
           </div>
-        </div>
-      )}
+        )}
 
-      {scan.state.status === "review" && (
-        <ReceiptModal
-          isNew
-          prefill={toPrefill(scan.state.result)}
-          onClose={scan.dismiss}
-          onCreate={createScanned}
-          defaultArea={area}
-          defaultUser={currentUser}
-        />
-      )}
-    </Layout>
+        {scan.state.status === "error" && (
+          <div className="modal-backdrop" style={{ alignItems: "center" }} onClick={scan.dismiss}>
+            <div className="card" style={{ maxWidth: 380, display: "flex", flexDirection: "column", gap: 14 }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-start", color: "var(--red)", fontSize: "0.9rem" }}>
+                <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
+                <span>{scan.state.message}</span>
+              </div>
+              <button onClick={scan.dismiss} className="btn btn-ghost">Schließen</button>
+            </div>
+          </div>
+        )}
+
+        {scan.state.status === "review" && (
+          <ReceiptModal
+            isNew
+            prefill={toPrefill(scan.state.result)}
+            onClose={scan.dismiss}
+            onCreate={createScanned}
+            defaultArea={area}
+            defaultUser={currentUser}
+          />
+        )}
+      </Layout>
+    </CategoriesProvider>
   );
 }

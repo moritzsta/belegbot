@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react';
 import { X, ExternalLink, Save, Trash2, AlertCircle, Info } from 'lucide-react';
 import type { Receipt, User, Area } from '@/lib/types';
-import { CATEGORIES, formatEuro, formatDate, toInputDate, getCategoryColor } from '@/lib/categories';
+import { formatEuro, formatDate, toInputDate } from '@/lib/categories';
 import { getReceiptUrl } from '@/lib/getReceiptUrl';
+import { useCategories } from '@/hooks/useCategories';
+import CategorySelect from './CategorySelect';
 
 interface Props {
   receipt?: Receipt;
@@ -99,7 +101,8 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew
   const filePath = source?.file_path ?? null;
   const fileUrl = getReceiptUrl(filePath);
   const isPdf = filePath?.toLowerCase().endsWith('.pdf');
-  const catColor = getCategoryColor(receipt?.category ?? form.category);
+  const { colorOf } = useCategories();
+  const catColor = colorOf(receipt?.category ?? form.category);
 
   return (<>
     <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -198,9 +201,12 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew
               </div>
               <div className="form-group">
                 <label className="form-label">Kategorie</label>
-                <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <CategorySelect
+                  value={form.category}
+                  onChange={v => setForm(f => ({ ...f, category: v }))}
+                  allowCreate
+                  aria-label="Kategorie"
+                />
               </div>
               <div className="form-group">
                 <label className="form-label">Bereich</label>
