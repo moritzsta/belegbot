@@ -1,7 +1,9 @@
 "use client";
 
 import type { Receipt as ReceiptType } from '@/lib/types';
-import { formatEuro, formatDate, getCategoryColor, capitalize } from '@/lib/categories';
+import { formatEuro, formatDate, capitalize } from '@/lib/categories';
+import { useCategories } from '@/hooks/useCategories';
+import CategoryIcon from './CategoryIcon';
 
 interface Props {
   receipt: ReceiptType;
@@ -14,7 +16,8 @@ interface Props {
 
 /** Eine Beleg-Zeile — geteilt zwischen Belegliste und Monatsuebersicht. */
 export default function ReceiptRow({ receipt: r, accentColor, isShared, animDelay, onClick }: Props) {
-  const catColor = getCategoryColor(r.category);
+  const { colorOf, byName } = useCategories();
+  const catColor = colorOf(r.category);
 
   return (
     <div
@@ -22,12 +25,8 @@ export default function ReceiptRow({ receipt: r, accentColor, isShared, animDela
       className="receipt-row animate-fade-in"
       style={{ animationDelay: `${animDelay}ms` }}
     >
-      {/* Category dot */}
-      <div style={{
-        width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-        background: catColor,
-        boxShadow: `0 0 5px ${catColor}50`,
-      }} />
+      {/* Kategorie: Icon falls gesetzt, sonst der Farbpunkt */}
+      <CategoryIcon icon={byName(r.category)?.icon} color={catColor} size={16} />
 
       {/* Main info */}
       <div style={{ flex: 1, minWidth: 0 }}>

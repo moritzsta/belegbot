@@ -5,7 +5,8 @@ import { TrendingUp, Receipt, Calendar, Tag, Plus } from 'lucide-react';
 import { useDashboardStats } from '@/hooks/useReceipts';
 import ReceiptModal from './ReceiptModal';
 import type { Receipt as ReceiptType, User, Area } from '@/lib/types';
-import { formatEuro, formatDate, getCategoryColor } from '@/lib/categories';
+import { formatEuro, formatDate } from '@/lib/categories';
+import { useCategories } from '@/hooks/useCategories';
 
 interface Props {
   currentUser: User;
@@ -16,6 +17,7 @@ interface Props {
 
 export default function Dashboard({ currentUser, area, onNavigateToList, onCreate }: Props) {
   const stats = useDashboardStats(currentUser, area);
+  const { colorOf } = useCategories();
   const isShared = area === 'shared';
   const accentColor = isShared ? 'var(--teal)' : 'var(--accent)';
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -87,7 +89,7 @@ export default function Dashboard({ currentUser, area, onNavigateToList, onCreat
               {stats.topCategories.map((cat, i) => {
                 const max = stats.topCategories[0]?.total ?? 1;
                 const pct = (cat.total / max) * 100;
-                const color = getCategoryColor(cat.category);
+                const color = colorOf(cat.category);
                 return (
                   <div key={i}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: '0.82rem' }}>

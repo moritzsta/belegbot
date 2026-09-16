@@ -2,18 +2,19 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { LayoutDashboard, List, CalendarDays, BarChart3, LogOut, Shield } from 'lucide-react';
+import { LayoutDashboard, List, CalendarDays, BarChart3, Tags, LogOut, Shield } from 'lucide-react';
 import type { User, Area } from '@/lib/types';
 import { capitalize } from '@/lib/categories';
 import { InstallButton } from './PwaInstaller';
 
-type NavPage = 'dashboard' | 'list' | 'month' | 'stats';
+type NavPage = 'dashboard' | 'list' | 'month' | 'stats' | 'categories';
 
 const NAV_ITEMS: { id: NavPage; icon: React.ElementType; label: string }[] = [
   { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { id: 'list', icon: List, label: 'Belege' },
   { id: 'month', icon: CalendarDays, label: 'Monat' },
   { id: 'stats', icon: BarChart3, label: 'Statistik' },
+  { id: 'categories', icon: Tags, label: 'Kategorien' },
 ];
 
 interface LayoutProps {

@@ -6,7 +6,8 @@ import { useMonthReceipts } from '@/hooks/useReceipts';
 import ReceiptModal from './ReceiptModal';
 import ReceiptRow from './ReceiptRow';
 import type { Area, Receipt as ReceiptType } from '@/lib/types';
-import { CATEGORIES, formatEuro } from '@/lib/categories';
+import { formatEuro } from '@/lib/categories';
+import CategorySelect from './CategorySelect';
 
 interface Props {
   area: Area;
@@ -108,15 +109,13 @@ export default function MonthlyOverview({ area }: Props) {
 
       {/* Filter innerhalb des Monats */}
       <div className="card filter-row" style={{ padding: '14px 16px', marginBottom: 16 }}>
-        <select
+        <CategorySelect
           value={category}
-          onChange={e => setCategory(e.target.value)}
+          onChange={setCategory}
+          emptyLabel="Alle Kategorien"
           className="filter-select input-sm"
           aria-label="Kategorie filtern"
-        >
-          <option value="">Alle Kategorien</option>
-          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
+        />
 
         {isShared && (
           <select

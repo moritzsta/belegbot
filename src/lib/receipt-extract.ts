@@ -1,7 +1,7 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 
-import { CATEGORIES } from "@/lib/categories";
+import { listCategoryNames } from "@/lib/categories-db";
 
 // Liest ANTHROPIC_API_KEY aus der Umgebung.
 const client = new Anthropic();
@@ -19,11 +19,12 @@ export interface ExtractedReceipt {
   extraction_confidence: "high" | "medium" | "low";
 }
 
-const FIELDS = `Gesuchte Felder:
+// TK-0005: Kategorien kommen aus der DB, deshalb wird der Prompt pro Aufruf gebaut.
+const fields = (categoryNames: string[]) => `Gesuchte Felder:
 - date: Kaufdatum (Format: YYYY-MM-DD, oder null)
 - merchant: Name des Händlers/Restaurants/Shops (String oder null)
 - total_amount: Gesamtbetrag in Euro als Zahl (ohne €-Zeichen, oder null)
-- category: Passende Kategorie aus dieser Liste: ${CATEGORIES.join(", ")}
+- category: Passende Kategorie aus dieser Liste: ${categoryNames.join(", ")}
 - vat_7_amount: MwSt-Betrag 7% als Zahl (oder null)
 - vat_7_base: Nettobetrag 7% als Zahl (oder null)
 - vat_19_amount: MwSt-Betrag 19% als Zahl (oder null)
@@ -33,13 +34,13 @@ const FIELDS = `Gesuchte Felder:
 Beispiel-Output:
 {"date":"2024-01-15","merchant":"Rewe","total_amount":42.80,"category":"Lebensmittel","vat_7_amount":1.23,"vat_7_base":17.57,"vat_19_amount":3.45,"vat_19_base":18.16,"confidence":"high"}`;
 
-const IMAGE_PROMPT = `Analysiere diesen Kassenbon/Beleg und extrahiere die Informationen. Antworte NUR mit einem gültigen JSON-Objekt, kein Markdown, kein Text davor oder danach.
+const imagePrompt = (names: string[]) => `Analysiere diesen Kassenbon/Beleg und extrahiere die Informationen. Antworte NUR mit einem gültigen JSON-Objekt, kein Markdown, kein Text davor oder danach.
 
-${FIELDS}`;
+${fields(names)}`;
 
-const textPrompt = (text: string) => `Der Nutzer hat einen Beleg / eine Ausgabe in Textform beschrieben. Extrahiere die Informationen so gut wie möglich. Was nicht im Text steht, ist null. Antworte NUR mit einem gültigen JSON-Objekt, kein Markdown, kein Text davor oder danach.
+const textPrompt = (text: string, names: string[]) => `Der Nutzer hat einen Beleg / eine Ausgabe in Textform beschrieben. Extrahiere die Informationen so gut wie möglich. Was nicht im Text steht, ist null. Antworte NUR mit einem gültigen JSON-Objekt, kein Markdown, kein Text davor oder danach.
 
-${FIELDS}
+${fields(names)}
 
 Text des Nutzers:
 """${text}"""`;
@@ -58,24 +59,26 @@ export async function extractReceipt(base64: string, mediaType: string): Promise
     ? ({ type: "document", source } as const)
     : ({ type: "image", source } as const);
 
+  const names = await listCategoryNames();
   const res = await client.messages.create({
     model: MODEL,
     max_tokens: 1024,
-    messages: [{ role: "user", content: [mediaBlock, { type: "text", text: IMAGE_PROMPT }] }],
+    messages: [{ role: "user", content: [mediaBlock, { type: "text", text: imagePrompt(names) }] }],
   });
 
-  return finalize(textOf(res));
+  return finalize(textOf(res), names);
 }
 
 /** Extrahiert Beleg-Felder aus einer reinen Textbeschreibung via Claude. */
 export async function extractReceiptFromText(text: string): Promise<ExtractedReceipt> {
+  const names = await listCategoryNames();
   const res = await client.messages.create({
     model: MODEL,
     max_tokens: 1024,
-    messages: [{ role: "user", content: textPrompt(text) }],
+    messages: [{ role: "user", content: textPrompt(text, names) }],
   });
 
-  return finalize(textOf(res));
+  return finalize(textOf(res), names);
 }
 
 /** Holt den Text-Block aus einer Claude-Antwort. */
@@ -85,7 +88,7 @@ function textOf(res: Anthropic.Message): string {
 }
 
 /** Parst die JSON-Antwort von Claude in ein normalisiertes ExtractedReceipt. */
-function finalize(rawJson: string): ExtractedReceipt {
+function finalize(rawJson: string, names: string[]): ExtractedReceipt {
   let parsed: Record<string, unknown> = {};
   try {
     const raw = rawJson.replace(/```json|```/g, "").trim();
@@ -94,10 +97,9 @@ function finalize(rawJson: string): ExtractedReceipt {
     return emptyExtraction();
   }
 
-  const category =
-    typeof parsed.category === "string" && (CATEGORIES as readonly string[]).includes(parsed.category)
-      ? parsed.category
-      : "Andere";
+  // Nur bekannte Kategorien durchlassen (case-insensitive, kanonischer Name aus der DB).
+  const wanted = typeof parsed.category === "string" ? parsed.category.trim().toLowerCase() : "";
+  const category = names.find((n) => n.toLowerCase() === wanted) ?? "Andere";
   const confidence =
     parsed.confidence === "high" || parsed.confidence === "low" ? parsed.confidence : "medium";
 

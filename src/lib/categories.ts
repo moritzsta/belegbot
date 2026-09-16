@@ -1,3 +1,6 @@
+// TK-0005: Kategorien liegen jetzt in der DB (belegbot_categories) und kommen
+// im Client ueber useCategories(). Diese Liste ist nur noch der Seed fuer die
+// Migration und der Farb-Fallback fuer Belege, deren Kategorie geloescht wurde.
 export const CATEGORIES = [
   'Lebensmittel',
   'Restaurant & Café',

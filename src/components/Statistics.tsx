@@ -7,7 +7,8 @@ import {
 } from 'recharts';
 import { listReceiptsSince } from '@/lib/actions/receipts';
 import type { User, Area, Receipt } from '@/lib/types';
-import { formatEuro, getCategoryColor, capitalize } from '@/lib/categories';
+import { formatEuro, capitalize } from '@/lib/categories';
+import { useCategories } from '@/hooks/useCategories';
 
 interface Props {
   currentUser: User;
@@ -20,6 +21,7 @@ export default function Statistics({ currentUser, area }: Props) {
   const [period, setPeriod] = useState<Period>('month');
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [loading, setLoading] = useState(true);
+  const { colorOf } = useCategories();
 
   const isShared = area === 'shared';
   const accentColor = isShared ? 'var(--teal)' : 'var(--accent)';
@@ -152,7 +154,7 @@ export default function Statistics({ currentUser, area }: Props) {
                   <PieChart>
                     <Pie data={catData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2} dataKey="value">
                       {catData.map((entry, index) => (
-                        <Cell key={index} fill={getCategoryColor(entry.name)} />
+                        <Cell key={index} fill={colorOf(entry.name)} />
                       ))}
                     </Pie>
                     <Tooltip content={customTooltip as unknown as React.ReactElement} />
@@ -161,7 +163,7 @@ export default function Statistics({ currentUser, area }: Props) {
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {catData.slice(0, 6).map((c, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem' }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: getCategoryColor(c.name), flexShrink: 0 }} />
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: colorOf(c.name), flexShrink: 0 }} />
                       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{c.name}</span>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', flexShrink: 0 }}>{formatEuro(c.value)}</span>
                     </div>
