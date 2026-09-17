@@ -237,44 +237,44 @@ export default function ReceiptModal({ receipt, onClose, onSave, onDelete, isNew
               </div>
             </div>
           )}
+        </div>
 
-          {/* Actions */}
-          <div className="modal-actions">
-            {editing ? (
-              <>
-                {!isNew ? (
-                  <button onClick={handleDelete} className={`btn btn-sm ${confirmDelete ? 'btn-danger' : 'btn-ghost'}`} disabled={deleting}>
-                    <Trash2 size={13} />
-                    {deleting ? 'Löschen…' : confirmDelete ? 'Wirklich löschen?' : 'Löschen'}
-                  </button>
-                ) : <div />}
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={onClose} className="btn btn-ghost btn-sm">Abbrechen</button>
-                  <button onClick={handleSave} className={`btn btn-sm ${form.is_shared ? 'btn-teal' : 'btn-primary'}`} disabled={saving}>
-                    <Save size={13} />
-                    {saving ? 'Speichern…' : 'Speichern'}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
+        {/* Actions — TK-0008: fester Footer ausserhalb des scrollenden Body */}
+        <div className="modal-actions">
+          {editing ? (
+            <>
+              {!isNew ? (
                 <button onClick={handleDelete} className={`btn btn-sm ${confirmDelete ? 'btn-danger' : 'btn-ghost'}`} disabled={deleting}>
                   <Trash2 size={13} />
                   {deleting ? 'Löschen…' : confirmDelete ? 'Wirklich löschen?' : 'Löschen'}
                 </button>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {fileUrl && (
-                    <button onClick={() => setLightboxOpen(true)} className="btn btn-ghost btn-sm">
-                      <ExternalLink size={13} /> Original öffnen
-                    </button>
-                  )}
-                  <button className="btn btn-primary btn-sm" onClick={() => setEditing(true)}>
-                    Bearbeiten
+              ) : <div />}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={onClose} className="btn btn-ghost btn-sm">Abbrechen</button>
+                <button onClick={handleSave} className={`btn btn-sm ${form.is_shared ? 'btn-teal' : 'btn-primary'}`} disabled={saving}>
+                  <Save size={13} />
+                  {saving ? 'Speichern…' : 'Speichern'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <button onClick={handleDelete} className={`btn btn-sm ${confirmDelete ? 'btn-danger' : 'btn-ghost'}`} disabled={deleting}>
+                <Trash2 size={13} />
+                {deleting ? 'Löschen…' : confirmDelete ? 'Wirklich löschen?' : 'Löschen'}
+              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {fileUrl && (
+                  <button onClick={() => setLightboxOpen(true)} className="btn btn-ghost btn-sm">
+                    <ExternalLink size={13} /> Original öffnen
                   </button>
-                </div>
-              </>
-            )}
-          </div>
+                )}
+                <button className="btn btn-primary btn-sm" onClick={() => setEditing(true)}>
+                  Bearbeiten
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
