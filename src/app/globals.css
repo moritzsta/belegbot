@@ -308,8 +308,12 @@ select option { background: var(--bg-card); }
   border-radius: var(--r-xl);
   width: 100%;
   max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
+  /* TK-0008: nie hoeher als der sichtbare Backdrop-Bereich (100% statt 90vh).
+     Header + Aktionsleiste stehen fest, nur .modal-body scrollt. */
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   box-shadow: var(--shadow-lg);
   animation: slideUp 0.25s ease both;
 }
@@ -552,23 +556,33 @@ select option { background: var(--bg-card); }
   gap: 12px;
   padding: 18px 22px;
   border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
   background: var(--bg-modal);
-  z-index: 1;
+  flex-shrink: 0;
 }
 .modal-body {
   padding: 20px 22px;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  /* TK-0008: einziger scrollender Bereich im Modal */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
+/* TK-0008: Inhalte (z.B. Bildvorschau) duerfen im begrenzten Body nicht schrumpfen */
+.modal-body > * { flex-shrink: 0; }
 .modal-actions {
   display: flex;
   justify-content: space-between;
   gap: 8px;
   padding-top: 4px;
   border-top: 1px solid var(--border);
+}
+/* TK-0008: Aktionsleiste als fester Modal-Footer (immer sichtbar, scrollt nicht mit) */
+.modal-content > .modal-actions {
+  flex-shrink: 0;
+  padding: 14px 22px;
+  background: var(--bg-modal);
 }
 
 /* ─── Seiten-Wrapper ─── */
@@ -702,9 +716,14 @@ select option { background: var(--bg-card); }
   .receipt-row-meta { flex-wrap: wrap; gap: 6px; }
   .receipt-row-note { max-width: 100%; }
 
+  /* TK-0008: auf dem Handy den Platz ausnutzen, Notch/Home-Bar beruecksichtigen */
+  .modal-backdrop {
+    padding: calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));
+  }
   .modal-header { padding: 14px 16px; }
   .modal-body { padding: 16px; gap: 16px; }
   .modal-actions { flex-wrap: wrap; }
+  .modal-content > .modal-actions { padding: 12px 16px; }
 
   .admin-page { padding: 24px 16px; }
   .login-page { padding: 24px 16px; }
@@ -725,9 +744,13 @@ select option { background: var(--bg-card); }
   }
   .modal-content {
     max-width: none;
-    max-height: none;
-    min-height: 100vh;
+    /* TK-0008: exakt der sichtbare Bereich (Backdrop), nicht 100vh —
+       100vh ist auf Handys hoeher als der Viewport (Browser-Leiste),
+       dadurch lag die Aktionsleiste unerreichbar unterhalb des Bildschirms. */
+    height: 100%;
     border-radius: 0;
     border: none;
   }
+  .modal-header { padding-top: calc(14px + env(safe-area-inset-top)); }
+  .modal-content > .modal-actions { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
 }
