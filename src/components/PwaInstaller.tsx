@@ -151,7 +151,7 @@ const HEADER_STYLE: React.CSSProperties = {
   display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
   padding: "18px 22px", borderBottom: "1px solid var(--border)",
 };
-const BODY_STYLE: React.CSSProperties = { padding: "20px 22px", display: "flex", flexDirection: "column", gap: 16 };
+const BODY_STYLE: React.CSSProperties = { padding: "20px 22px", display: "flex", flexDirection: "column", gap: 16, minHeight: 0, overflowY: "auto" };
 const CLOSE_STYLE: React.CSSProperties = {
   background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)",
   minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center",
